@@ -38,6 +38,11 @@
             this.prendasToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.outfitsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.categoriasToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.ventasToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.clientesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.planesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.pedidosVentaToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.pedidosRealizadosToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gestionToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.usuariosToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.bitacoraToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -54,6 +59,7 @@
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.usuarioToolStripMenuItem,
             this.inventarioToolStripMenuItem,
+            this.ventasToolStripMenuItem,
             this.gestionToolStripMenuItem,
             this.bitacoraToolStripMenuItem});
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
@@ -109,6 +115,45 @@
             this.categoriasToolStripMenuItem.Text = "Categorias";
             this.categoriasToolStripMenuItem.Click += new System.EventHandler(this.categoriasToolStripMenuItem_Click);
             //
+            // ventasToolStripMenuItem
+            //
+            this.ventasToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.clientesToolStripMenuItem,
+            this.planesToolStripMenuItem,
+            this.pedidosVentaToolStripMenuItem,
+            this.pedidosRealizadosToolStripMenuItem});
+            this.ventasToolStripMenuItem.Name = "ventasToolStripMenuItem";
+            this.ventasToolStripMenuItem.Size = new System.Drawing.Size(56, 20);
+            this.ventasToolStripMenuItem.Text = "Ventas";
+            //
+            // clientesToolStripMenuItem
+            //
+            this.clientesToolStripMenuItem.Name = "clientesToolStripMenuItem";
+            this.clientesToolStripMenuItem.Size = new System.Drawing.Size(170, 22);
+            this.clientesToolStripMenuItem.Text = "Clientes";
+            this.clientesToolStripMenuItem.Click += new System.EventHandler(this.clientesToolStripMenuItem_Click);
+            //
+            // planesToolStripMenuItem
+            //
+            this.planesToolStripMenuItem.Name = "planesToolStripMenuItem";
+            this.planesToolStripMenuItem.Size = new System.Drawing.Size(170, 22);
+            this.planesToolStripMenuItem.Text = "Planes de Suscripcion";
+            this.planesToolStripMenuItem.Click += new System.EventHandler(this.planesToolStripMenuItem_Click);
+            //
+            // pedidosVentaToolStripMenuItem
+            //
+            this.pedidosVentaToolStripMenuItem.Name = "pedidosVentaToolStripMenuItem";
+            this.pedidosVentaToolStripMenuItem.Size = new System.Drawing.Size(170, 22);
+            this.pedidosVentaToolStripMenuItem.Text = "Pedidos de Venta";
+            this.pedidosVentaToolStripMenuItem.Click += new System.EventHandler(this.pedidosVentaToolStripMenuItem_Click);
+            //
+            // pedidosRealizadosToolStripMenuItem
+            //
+            this.pedidosRealizadosToolStripMenuItem.Name = "pedidosRealizadosToolStripMenuItem";
+            this.pedidosRealizadosToolStripMenuItem.Size = new System.Drawing.Size(170, 22);
+            this.pedidosRealizadosToolStripMenuItem.Text = "Pedidos Realizados";
+            this.pedidosRealizadosToolStripMenuItem.Click += new System.EventHandler(this.pedidosRealizadosToolStripMenuItem_Click);
+            //
             // gestionToolStripMenuItem
             //
             this.gestionToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -163,5 +208,10 @@
         private System.Windows.Forms.ToolStripMenuItem bitacoraToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem gestionToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem usuariosToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem ventasToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem clientesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem planesToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem pedidosVentaToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem pedidosRealizadosToolStripMenuItem;
     }
 }

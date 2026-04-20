@@ -33,7 +33,7 @@ namespace Servicios
             BE.Bitacora registro = new BE.Bitacora
             {
                 Fecha      = DateTime.Now,
-                IdUsuario  = sesion.Usuario.Id,
+                IdUsuario  = (int?)sesion.Usuario.Id,
                 Modulo     = formulario.Text,
                 Actividad  = actividad,
                 Criticidad = criticidad,

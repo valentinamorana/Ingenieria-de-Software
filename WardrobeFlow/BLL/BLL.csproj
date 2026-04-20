@@ -43,7 +43,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bitacora.cs" />
+    <Compile Include="BitacoraNegocio.cs" />
+    <Compile Include="Cliente.cs" />
     <Compile Include="Configuracion.cs" />
+    <Compile Include="Pedido.cs" />
+    <Compile Include="PlanSuscripcion.cs" />
+    <Compile Include="Prenda.cs" />
     <Compile Include="Usuario.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

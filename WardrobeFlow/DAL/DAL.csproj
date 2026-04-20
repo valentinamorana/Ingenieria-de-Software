@@ -43,7 +43,13 @@
   <ItemGroup>
     <Compile Include="Acceso.cs" />
     <Compile Include="Bitacora.cs" />
+    <Compile Include="BitacoraNegocio.cs" />
+    <Compile Include="Cliente.cs" />
+    <Compile Include="Empleado.cs" />
+    <Compile Include="Pedido.cs" />
     <Compile Include="Permiso.cs" />
+    <Compile Include="PlanSuscripcion.cs" />
+    <Compile Include="Prenda.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Usuario.cs" />
   </ItemGroup>

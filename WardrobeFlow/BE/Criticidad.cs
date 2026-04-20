@@ -1,28 +1,36 @@
-﻿namespace BE
+namespace BE
 {
     /// <summary>
-    /// Capa de Entidades — Enumeración de Niveles de Criticidad.
-    /// Define los posibles niveles de importancia para los registros de la Bitácora.
-    /// Se usa para clasificar qué tan relevante o grave es una actividad registrada.
+    /// Capa de Entidades — Enumeración de Niveles de Criticidad para Bitácora.
     ///
-    /// Uso en Bitácora:
-    ///   - None  (0): Sin criticidad definida (eventos de sistema como login/logout)
-    ///   - Baja  (1): Consultas, navegación, lectura de datos
-    ///   - Media (2): Modificaciones, actualizaciones de datos
-    ///   - Alta  (3): Eliminaciones, cambios de configuración, accesos privilegiados
+    ///   None  (0): Eventos de sesión (login/logout)
+    ///   Baja  (1): Consultas, navegación, lectura
+    ///   Media (2): Modificaciones de datos
+    ///   Alta  (3): Eliminaciones, acceso privilegiado
+    ///   IntentosLogin (4): Intentos fallidos de login — posible bloqueo de cuenta
+    ///   RecuperacionClave (5): Recuperación / forgot password
     /// </summary>
     public enum Criticidad
     {
-        /// <summary>Sin nivel de criticidad asignado. Usado en eventos de sesión (login/logout).</summary>
-        None  = 0,
+        /// <summary>Sin criticidad. Usado en Login/Logout exitosos.</summary>
+        None             = 0,
 
-        /// <summary>Actividad de baja importancia (e.g., consultas, navegación).</summary>
-        Baja  = 1,
+        /// <summary>Actividad de baja importancia (consultas, navegación).</summary>
+        Baja             = 1,
 
-        /// <summary>Actividad de impacto moderado (e.g., modificación de registros).</summary>
-        Media = 2,
+        /// <summary>Modificación de datos (actualizaciones, ediciones).</summary>
+        Media            = 2,
 
-        /// <summary>Actividad crítica o de alto impacto (e.g., eliminaciones, acceso privilegiado).</summary>
-        Alta  = 3
+        /// <summary>Acción de alto impacto (eliminaciones, cambios de configuración).</summary>
+        Alta             = 3,
+
+        /// <summary>Intento fallido de login. Acumular puede derivar en bloqueo de cuenta.</summary>
+        IntentosLogin    = 4,
+
+        /// <summary>Recuperación de contraseña (forgot password / reset por admin).</summary>
+        RecuperacionClave = 5,
+
+        /// <summary>Cuenta bloqueada tras acumulación de intentos fallidos de login.</summary>
+        BloqueosCuenta = 6
     }
 }

@@ -20,7 +20,7 @@ namespace DAL
             SqlParameter[] parametros = new SqlParameter[]
             {
                 new SqlParameter("@fecha",      registro.Fecha),
-                new SqlParameter("@usuario",    registro.IdUsuario),
+                new SqlParameter("@usuario",    (object)registro.IdUsuario ?? DBNull.Value),
                 new SqlParameter("@modulo",     registro.Modulo),
                 new SqlParameter("@actividad",  registro.Actividad),
                 new SqlParameter("@detalle",    registro.Detalle),

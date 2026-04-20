@@ -10,9 +10,12 @@ namespace GUI
     /// Al iniciarse, construye el menú dinámicamente según los permisos
     /// del usuario logueado (cargados desde RolPermiso en el Login):
     ///
-    ///   Administrador     → Perfil | Inventario (Prendas, Outfits, Categorias) | Administrar (Usuarios) | Bitácora
-    ///   Supervisor        → Perfil | Bitácora
-    ///   OperadorLogistico → Perfil | Inventario (Prendas, Outfits, Categorias)
+    ///   Administrador        → Perfil | Administrar (Usuarios) | Bitácora
+    ///   Supervisor           → Perfil | Bitácora
+    ///   OperadorLogistico    → Perfil | Inventario (Prendas, Outfits, Categorias)
+    ///   Vendedor             → Perfil | Ventas (Clientes, Planes, Pedidos de Venta)
+    ///   ControladorDeStock   → Perfil | Inventario (Prendas, Stock)
+    ///   OperadorDeInventario → Perfil | Ventas (Pedidos Realizados)
     ///
     /// Los permisos se leen de BE.Usuario.Permisos via BLL.ObtenerUsuarioActivo().
     /// La GUI nunca accede directamente a Seguridad ni a DAL.
@@ -41,29 +44,32 @@ namespace GUI
         /// Muestra u oculta los ítems del menú según los permisos del usuario.
         ///
         /// Mapeo NombreMenu → ToolStripMenuItem:
-        ///   mnuPrendas    → prendasToolStripMenuItem    (bajo inventarioToolStripMenuItem)
-        ///   mnuOutfits    → outfitsToolStripMenuItem     (bajo inventarioToolStripMenuItem)
-        ///   mnuCategorias → categoriasToolStripMenuItem  (bajo inventarioToolStripMenuItem)
-        ///   mnuUsuarios   → gestionToolStripMenuItem (padre) + usuariosToolStripMenuItem
-        ///   mnuAuditoria  → bitacoraToolStripMenuItem
+        ///   mnuPrendas            → prendasToolStripMenuItem       (bajo Inventario)
+        ///   mnuOutfits            → outfitsToolStripMenuItem        (bajo Inventario)
+        ///   mnuCategorias         → categoriasToolStripMenuItem     (bajo Inventario)
+        ///   mnuStock              → (futuro: stockToolStripMenuItem bajo Inventario)
+        ///   mnuClientes           → clientesToolStripMenuItem       (bajo Ventas)
+        ///   mnuPlanSuscripciones  → planesToolStripMenuItem         (bajo Ventas)
+        ///   mnuPedidosVenta       → pedidosVentaToolStripMenuItem   (bajo Ventas)
+        ///   mnuUsuarios           → gestionToolStripMenuItem + usuariosToolStripMenuItem
+        ///   mnuAuditoria          → bitacoraToolStripMenuItem
         /// </summary>
         private void AplicarPermisos(List<BE.Permiso> permisos)
         {
-            // Sin permisos: ocultar todo excepto Perfil/Cerrar Sesión
-            if (permisos == null || permisos.Count == 0)
-            {
-                inventarioToolStripMenuItem.Visible = false;
-                gestionToolStripMenuItem.Visible    = false;
-                bitacoraToolStripMenuItem.Visible   = false;
-                return;
-            }
+            // Ocultar todo por defecto
+            inventarioToolStripMenuItem.Visible = false;
+            ventasToolStripMenuItem.Visible     = false;
+            gestionToolStripMenuItem.Visible    = false;
+            bitacoraToolStripMenuItem.Visible   = false;
+
+            if (permisos == null || permisos.Count == 0) return;
 
             // HashSet para búsqueda O(1) por NombreMenu
             var nombresMenu = new HashSet<string>();
             foreach (var p in permisos)
                 nombresMenu.Add(p.NombreMenu);
 
-            // Inventario → OperadorLogistico y Administrador
+            // ── Inventario ────────────────────────────────────────────────────
             bool tienePrendas    = nombresMenu.Contains("mnuPrendas");
             bool tieneOutfits    = nombresMenu.Contains("mnuOutfits");
             bool tieneCategorias = nombresMenu.Contains("mnuCategorias");
@@ -72,13 +78,26 @@ namespace GUI
             outfitsToolStripMenuItem.Visible    = tieneOutfits;
             categoriasToolStripMenuItem.Visible = tieneCategorias;
 
-            // El menú padre Inventario se muestra si tiene al menos un subítem visible
             inventarioToolStripMenuItem.Visible = tienePrendas || tieneOutfits || tieneCategorias;
 
-            // Administrar (Usuarios) → solo Administrador
+            // ── Ventas ────────────────────────────────────────────────────────
+            bool tieneClientes     = nombresMenu.Contains("mnuClientes");
+            bool tienePlanes       = nombresMenu.Contains("mnuPlanSuscripciones");
+            bool tienePedidosVenta = nombresMenu.Contains("mnuPedidosVenta");
+            bool tienePedidosReal  = nombresMenu.Contains("mnuPedidosRealizados");
+
+            clientesToolStripMenuItem.Visible          = tieneClientes;
+            planesToolStripMenuItem.Visible            = tienePlanes;
+            pedidosVentaToolStripMenuItem.Visible      = tienePedidosVenta;
+            pedidosRealizadosToolStripMenuItem.Visible = tienePedidosReal;
+
+            ventasToolStripMenuItem.Visible =
+                tieneClientes || tienePlanes || tienePedidosVenta || tienePedidosReal;
+
+            // ── Administrar (Usuarios) ────────────────────────────────────────
             gestionToolStripMenuItem.Visible = nombresMenu.Contains("mnuUsuarios");
 
-            // Bitácora → Administrador y Supervisor
+            // ── Bitácora ──────────────────────────────────────────────────────
             bitacoraToolStripMenuItem.Visible = nombresMenu.Contains("mnuAuditoria");
         }
 
@@ -158,6 +177,55 @@ namespace GUI
                 if (hijo is Categorias) { hijo.BringToFront(); return; }
             }
             new Categorias { MdiParent = this }.Show();
+        }
+
+        /// <summary>
+        /// Abre el módulo de Clientes como hijo MDI. Accesible para Vendedor.
+        /// </summary>
+        private void clientesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            foreach (Form hijo in this.MdiChildren)
+            {
+                if (hijo is Clientes) { hijo.BringToFront(); return; }
+            }
+            new Clientes { MdiParent = this }.Show();
+        }
+
+        /// <summary>
+        /// Abre el módulo de Planes de Suscripción como hijo MDI.
+        /// </summary>
+        private void planesToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            foreach (Form hijo in this.MdiChildren)
+            {
+                if (hijo is Planes) { hijo.BringToFront(); return; }
+            }
+            new Planes { MdiParent = this }.Show();
+        }
+
+        /// <summary>
+        /// Abre el módulo de Pedidos de Venta como hijo MDI. Accesible para Vendedor.
+        /// </summary>
+        private void pedidosVentaToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            foreach (Form hijo in this.MdiChildren)
+            {
+                if (hijo is PedidosVenta) { hijo.BringToFront(); return; }
+            }
+            new PedidosVenta { MdiParent = this }.Show();
+        }
+
+        /// <summary>
+        /// Abre el módulo de Pedidos Realizados como hijo MDI.
+        /// Accesible para OperadorDeInventario (mnuPedidosRealizados).
+        /// </summary>
+        private void pedidosRealizadosToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            foreach (Form hijo in this.MdiChildren)
+            {
+                if (hijo is PedidosRealizados) { hijo.BringToFront(); return; }
+            }
+            new PedidosRealizados { MdiParent = this }.Show();
         }
     }
 }

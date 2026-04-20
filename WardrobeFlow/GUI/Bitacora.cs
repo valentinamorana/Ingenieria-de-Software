@@ -6,322 +6,355 @@ using System.Windows.Forms;
 namespace GUI
 {
     /// <summary>
-    /// Capa de Presentación — Formulario de Gestión de Bitácora.
+    /// Capa de Presentación — Módulo de Auditoría (Bitácora).
     ///
-    /// Permite visualizar y buscar los registros de auditoría del sistema.
-    /// Se abre como formulario hijo MDI dentro del Menú principal.
+    /// Presenta dos pestañas:
+    ///   Tab 1 — Sistema    : eventos de seguridad (login, logout, resets, intentos fallidos)
+    ///   Tab 2 — Negocio    : eventos de negocio (ventas, despachos, stock, clientes)
     ///
-    /// FUNCIONALIDADES:
-    ///   - Visualización de todos los registros ordenados por fecha (más recientes primero)
-    ///   - Acceso rápido: "Últimos N días" con cantidad configurable por el usuario
-    ///   - Búsqueda combinada por: rango de fechas, usuario (ID), actividad y criticidad
-    ///   - Carga automática al abrir el formulario
-    ///
-    /// CUMPLE REQUISITOS T06a:
-    ///   ✓ Registra fecha, hora, usuario, actividad, información asociada
-    ///   ✓ Permite búsquedas por los datos almacenados de manera combinada
-    ///   ✓ Trae los registros de los últimos N días (N definible por el usuario)
+    /// Accesible para Administrador (mnuAuditoria) y Supervisor (mnuAuditoria).
     /// </summary>
     public partial class Bitacora : Form
     {
-        // BLL que provee los métodos de consulta de bitácora
-        private readonly BLL.Bitacora bitacoraBLL = new BLL.Bitacora();
+        private readonly BLL.Bitacora        bllSistema  = new BLL.Bitacora();
+        private readonly BLL.BitacoraNegocio bllNegocio  = new BLL.BitacoraNegocio();
 
-        // ── Controles de filtro rápido (últimos N días) ───────────────────────
+        // ── Controles compartidos ─────────────────────────────────────────────
+        private TabControl tabControl;
+
+        // ── Tab Sistema ───────────────────────────────────────────────────────
+        private DataGridView dgvSistema;
         private NumericUpDown nudDias;
-        private Button btnUltimosDias;
+        private Button       btnUltimosDias;
+        private DateTimePicker dtpDesde, dtpHasta;
+        private CheckBox     chkFiltrarFecha;
+        private TextBox      txtUsuario, txtActividad;
+        private ComboBox     cmbCriticidad;
+        private Button       btnBuscar, btnLimpiar;
+        private Label        lblResultadosSistema;
 
-        // ── Controles de filtros combinados ──────────────────────────────────
-        private DateTimePicker dtpDesde;
-        private DateTimePicker dtpHasta;
-        private CheckBox chkFiltrarFecha;
-        private TextBox txtUsuario;
-        private TextBox txtActividad;
-        private ComboBox cmbCriticidad;
-        private Button btnBuscar;
-        private Button btnLimpiar;
+        // ── Tab Negocio ───────────────────────────────────────────────────────
+        private DataGridView dgvNegocio;
+        private DateTimePicker dtpNegDesde, dtpNegHasta;
+        private CheckBox     chkNegFecha;
+        private ComboBox     cmbTipoEvento;
+        private TextBox      txtNegPedido, txtNegCliente;
+        private Button       btnNegBuscar, btnNegLimpiar;
+        private Label        lblResultadosNegocio;
 
-        // ── Grilla y estado ───────────────────────────────────────────────────
-        private DataGridView dgvBitacora;
-        private Label lblResultados;
-
-        /// <summary>
-        /// Constructor: inicializa el formulario y construye la interfaz programáticamente.
-        /// </summary>
         public Bitacora()
         {
             InitializeComponent();
-            this.Text        = "Bitácora del Sistema";
-            this.ClientSize  = new Size(980, 600);
-            this.MinimumSize = new Size(820, 520);
+            this.Text        = "Auditoría — Bitácoras del Sistema";
+            this.ClientSize  = new Size(1020, 640);
+            this.MinimumSize = new Size(860, 540);
 
             ConstruirInterfaz();
-
-            // Cargar todos los registros al abrir el formulario
-            this.Load += (s, e) => CargarRegistros();
+            this.Load += (s, e) =>
+            {
+                CargarSistema();
+                CargarNegocio();
+            };
         }
 
-        /// <summary>
-        /// Construye toda la interfaz del formulario programáticamente.
-        /// El panel superior tiene dos zonas: acceso rápido (últimos N días) y filtros combinados.
-        /// </summary>
         private void ConstruirInterfaz()
         {
-            // ── Panel superior de filtros ─────────────────────────────────────
+            tabControl = new TabControl { Dock = DockStyle.Fill };
+
+            tabControl.TabPages.Add(ConstruirTabSistema());
+            tabControl.TabPages.Add(ConstruirTabNegocio());
+
+            this.Controls.Add(tabControl);
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // TAB SISTEMA
+        // ══════════════════════════════════════════════════════════════════════
+
+        private TabPage ConstruirTabSistema()
+        {
+            var tab = new TabPage("🔐  Bitácora del Sistema");
+
+            // ── Panel de filtros ──────────────────────────────────────────────
             Panel panelFiltros = new Panel
             {
-                Dock      = DockStyle.Top,
-                Height    = 120,
+                Dock = DockStyle.Top, Height = 120,
                 BackColor = Color.FromArgb(240, 240, 240),
-                Padding   = new Padding(8)
+                Padding = new Padding(8)
             };
 
-            // ── Zona 1: Acceso rápido "Últimos N días" ────────────────────────
-            var lblAccesoRapido = new Label
-            {
-                Text      = "Acceso rápido:",
-                Left      = 10, Top = 10,
-                Width     = 100,
-                Font      = new Font(SystemFonts.DefaultFont, FontStyle.Bold)
-            };
+            // Acceso rápido
+            panelFiltros.Controls.Add(new Label
+                { Text = "Acceso rápido:", Left = 10, Top = 10, Width = 100,
+                  Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold) });
+            panelFiltros.Controls.Add(new Label { Text = "Últimos", Left = 10, Top = 38, Width = 55 });
 
-            var lblUltimos = new Label { Text = "Últimos", Left = 10, Top = 38, Width = 55 };
-
-            // NumericUpDown para definir la cantidad de días (1 – 365)
             nudDias = new NumericUpDown
-            {
-                Left     = 68, Top    = 34,
-                Width    = 55, Height = 24,
-                Minimum  = 1,  Maximum = 365,
-                Value    = 7           // Por defecto: última semana
-            };
-
-            var lblDias = new Label { Text = "días", Left = 128, Top = 38, Width = 35 };
+                { Left = 68, Top = 34, Width = 55, Minimum = 1, Maximum = 365, Value = 7 };
+            panelFiltros.Controls.Add(nudDias);
+            panelFiltros.Controls.Add(new Label { Text = "días", Left = 128, Top = 38, Width = 35 });
 
             btnUltimosDias = new Button
             {
-                Text      = "Ver",
-                Left      = 166, Top = 33,
-                Width     = 55,  Height = 26,
-                BackColor = Color.FromArgb(70, 130, 180),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                Text = "Ver", Left = 166, Top = 33, Width = 55, Height = 26,
+                BackColor = Color.SteelBlue, ForeColor = Color.White, FlatStyle = FlatStyle.Flat
             };
             btnUltimosDias.FlatAppearance.BorderSize = 0;
-            btnUltimosDias.Click += BtnUltimosDias_Click;
-
-            // Separador visual entre las dos zonas
-            var separador = new Label
+            btnUltimosDias.Click += (s, e) =>
             {
-                Text      = "│",
-                Left      = 235, Top = 10,
-                Width     = 15,  Height = 80,
-                TextAlign = ContentAlignment.MiddleCenter,
-                ForeColor = Color.Gray
+                var dt = bllSistema.ObtenerUltimosNDias((int)nudDias.Value);
+                MostrarEnGrilla(dgvSistema, lblResultadosSistema, dt, $"últimos {(int)nudDias.Value} días");
             };
+            panelFiltros.Controls.Add(btnUltimosDias);
 
-            // ── Zona 2: Filtros combinados ────────────────────────────────────
-            // Checkbox para activar filtro de fechas
-            chkFiltrarFecha = new CheckBox
-            {
-                Text  = "Filtrar por fecha",
-                Left  = 255, Top = 10,
-                Width = 130
-            };
+            panelFiltros.Controls.Add(new Label
+                { Text = "│", Left = 235, Top = 10, Width = 15, Height = 80,
+                  TextAlign = System.Drawing.ContentAlignment.MiddleCenter, ForeColor = Color.Gray });
+
+            // Filtros combinados
+            chkFiltrarFecha = new CheckBox { Text = "Filtrar por fecha", Left = 255, Top = 10, Width = 130 };
             chkFiltrarFecha.CheckedChanged += (s, e) =>
             {
                 dtpDesde.Enabled = chkFiltrarFecha.Checked;
                 dtpHasta.Enabled = chkFiltrarFecha.Checked;
             };
+            panelFiltros.Controls.Add(chkFiltrarFecha);
 
-            // Fecha Desde
-            var lblDesde = new Label { Text = "Desde:", Left = 255, Top = 38, Width = 50 };
-            dtpDesde = new DateTimePicker
-            {
-                Left    = 307, Top    = 34,
-                Width   = 130,
-                Format  = DateTimePickerFormat.Short,
-                Enabled = false
-            };
+            panelFiltros.Controls.Add(new Label { Text = "Desde:", Left = 255, Top = 38, Width = 50 });
+            dtpDesde = new DateTimePicker { Left = 307, Top = 34, Width = 130, Format = DateTimePickerFormat.Short, Enabled = false };
+            panelFiltros.Controls.Add(dtpDesde);
 
-            // Fecha Hasta
-            var lblHasta = new Label { Text = "Hasta:", Left = 448, Top = 38, Width = 45 };
-            dtpHasta = new DateTimePicker
-            {
-                Left    = 496, Top    = 34,
-                Width   = 130,
-                Format  = DateTimePickerFormat.Short,
-                Enabled = false
-            };
+            panelFiltros.Controls.Add(new Label { Text = "Hasta:", Left = 448, Top = 38, Width = 45 });
+            dtpHasta = new DateTimePicker { Left = 496, Top = 34, Width = 130, Format = DateTimePickerFormat.Short, Enabled = false };
+            panelFiltros.Controls.Add(dtpHasta);
 
-            // Filtro por Usuario ID
-            var lblUsuario = new Label { Text = "Usuario ID:", Left = 638, Top = 38, Width = 75 };
+            panelFiltros.Controls.Add(new Label { Text = "Usuario ID:", Left = 638, Top = 38, Width = 75 });
             txtUsuario = new TextBox { Left = 716, Top = 35, Width = 55, Text = "0" };
+            panelFiltros.Controls.Add(txtUsuario);
 
-            // Filtro por Actividad (texto parcial, búsqueda LIKE)
-            var lblActividad = new Label { Text = "Actividad:", Left = 255, Top = 80, Width = 70 };
+            panelFiltros.Controls.Add(new Label { Text = "Actividad:", Left = 255, Top = 80, Width = 70 });
             txtActividad = new TextBox { Left = 327, Top = 77, Width = 200 };
+            panelFiltros.Controls.Add(txtActividad);
 
-            // Filtro por Criticidad
-            var lblCriticidad = new Label { Text = "Criticidad:", Left = 540, Top = 80, Width = 70 };
+            panelFiltros.Controls.Add(new Label { Text = "Criticidad:", Left = 540, Top = 80, Width = 70 });
             cmbCriticidad = new ComboBox
             {
-                Left          = 612, Top           = 77,
-                Width         = 120,
-                DropDownStyle = ComboBoxStyle.DropDownList
+                Left = 612, Top = 77, Width = 120, DropDownStyle = ComboBoxStyle.DropDownList
             };
-            cmbCriticidad.Items.AddRange(new object[] { "Todas", "None (0)", "Baja (1)", "Media (2)", "Alta (3)" });
+            cmbCriticidad.Items.AddRange(new object[] { "Todas", "None", "Baja", "Media", "Alta" });
             cmbCriticidad.SelectedIndex = 0;
+            panelFiltros.Controls.Add(cmbCriticidad);
 
-            // Botón Buscar (filtros combinados)
             btnBuscar = new Button
             {
-                Text      = "Buscar",
-                Left      = 745, Top   = 75,
-                Width     = 80,
-                BackColor = Color.SteelBlue,
-                ForeColor = Color.White
+                Text = "Buscar", Left = 745, Top = 75, Width = 80,
+                BackColor = Color.SteelBlue, ForeColor = Color.White, FlatStyle = FlatStyle.Flat
             };
-            btnBuscar.Click += BtnBuscar_Click;
+            btnBuscar.FlatAppearance.BorderSize = 0;
+            btnBuscar.Click += BtnBuscarSistema_Click;
+            panelFiltros.Controls.Add(btnBuscar);
 
-            // Botón Limpiar
             btnLimpiar = new Button { Text = "Limpiar", Left = 833, Top = 75, Width = 80 };
-            btnLimpiar.Click += BtnLimpiar_Click;
-
-            // Agregar todos los controles al panel
-            panelFiltros.Controls.AddRange(new Control[]
+            btnLimpiar.Click += (s, e) =>
             {
-                lblAccesoRapido, lblUltimos, nudDias, lblDias, btnUltimosDias, separador,
-                chkFiltrarFecha, lblDesde, dtpDesde, lblHasta, dtpHasta,
-                lblUsuario, txtUsuario, lblActividad, txtActividad,
-                lblCriticidad, cmbCriticidad, btnBuscar, btnLimpiar
-            });
+                chkFiltrarFecha.Checked = false; txtUsuario.Text = "0";
+                txtActividad.Clear(); cmbCriticidad.SelectedIndex = 0; nudDias.Value = 7;
+                CargarSistema();
+            };
+            panelFiltros.Controls.Add(btnLimpiar);
 
-            // ── Label contador de resultados ──────────────────────────────────
-            lblResultados = new Label
+            // Grilla
+            dgvSistema = CrearDgv();
+
+            lblResultadosSistema = new Label
             {
-                Dock      = DockStyle.Bottom,
-                Height    = 24,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding   = new Padding(4, 0, 0, 0),
+                Dock = DockStyle.Bottom, Height = 24,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Padding = new Padding(4, 0, 0, 0),
                 BackColor = Color.FromArgb(230, 230, 230)
             };
 
-            // ── DataGridView de resultados ────────────────────────────────────
-            dgvBitacora = new DataGridView
+            tab.Controls.Add(dgvSistema);
+            tab.Controls.Add(lblResultadosSistema);
+            tab.Controls.Add(panelFiltros);
+            return tab;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // TAB NEGOCIO
+        // ══════════════════════════════════════════════════════════════════════
+
+        private TabPage ConstruirTabNegocio()
+        {
+            var tab = new TabPage("📦  Bitácora de Negocio");
+
+            Panel panelFiltros = new Panel
             {
-                Dock                            = DockStyle.Fill,
-                ReadOnly                        = true,
-                AllowUserToAddRows              = false,
-                AllowUserToDeleteRows           = false,
-                SelectionMode                   = DataGridViewSelectionMode.FullRowSelect,
-                AutoSizeColumnsMode             = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor                 = Color.White,
-                RowHeadersVisible               = false,
-                BorderStyle                     = BorderStyle.None,
+                Dock = DockStyle.Top, Height = 80,
+                BackColor = Color.FromArgb(238, 245, 238),
+                Padding = new Padding(8)
+            };
+
+            chkNegFecha = new CheckBox { Text = "Filtrar por fecha", Left = 8, Top = 10, Width = 130 };
+            chkNegFecha.CheckedChanged += (s, e) =>
+            {
+                dtpNegDesde.Enabled = chkNegFecha.Checked;
+                dtpNegHasta.Enabled = chkNegFecha.Checked;
+            };
+            panelFiltros.Controls.Add(chkNegFecha);
+
+            panelFiltros.Controls.Add(new Label { Text = "Desde:", Left = 8, Top = 40, Width = 50 });
+            dtpNegDesde = new DateTimePicker { Left = 60, Top = 37, Width = 120, Format = DateTimePickerFormat.Short, Enabled = false };
+            panelFiltros.Controls.Add(dtpNegDesde);
+
+            panelFiltros.Controls.Add(new Label { Text = "Hasta:", Left = 190, Top = 40, Width = 45 });
+            dtpNegHasta = new DateTimePicker { Left = 238, Top = 37, Width = 120, Format = DateTimePickerFormat.Short, Enabled = false };
+            panelFiltros.Controls.Add(dtpNegHasta);
+
+            panelFiltros.Controls.Add(new Label { Text = "Tipo:", Left = 370, Top = 12, Width = 40 });
+            cmbTipoEvento = new ComboBox
+            {
+                Left = 412, Top = 9, Width = 160, DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            cmbTipoEvento.Items.AddRange(new object[]
+            {
+                "Todos", "Venta", "Cancelacion", "Despacho", "Entrega",
+                "AltaPrenda", "CambioEstadoPrenda", "AltaCliente", "BajaCliente"
+            });
+            cmbTipoEvento.SelectedIndex = 0;
+            panelFiltros.Controls.Add(cmbTipoEvento);
+
+            panelFiltros.Controls.Add(new Label { Text = "ID Pedido:", Left = 370, Top = 42, Width = 70 });
+            txtNegPedido = new TextBox { Left = 442, Top = 39, Width = 60, Text = "0" };
+            panelFiltros.Controls.Add(txtNegPedido);
+
+            panelFiltros.Controls.Add(new Label { Text = "ID Cliente:", Left = 514, Top = 42, Width = 70 });
+            txtNegCliente = new TextBox { Left = 586, Top = 39, Width = 60, Text = "0" };
+            panelFiltros.Controls.Add(txtNegCliente);
+
+            btnNegBuscar = new Button
+            {
+                Text = "Buscar", Left = 660, Top = 9, Width = 80, Height = 28,
+                BackColor = Color.FromArgb(60, 140, 60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat
+            };
+            btnNegBuscar.FlatAppearance.BorderSize = 0;
+            btnNegBuscar.Click += BtnBuscarNegocio_Click;
+            panelFiltros.Controls.Add(btnNegBuscar);
+
+            btnNegLimpiar = new Button { Text = "Limpiar", Left = 748, Top = 9, Width = 80, Height = 28 };
+            btnNegLimpiar.Click += (s, e) =>
+            {
+                chkNegFecha.Checked = false; cmbTipoEvento.SelectedIndex = 0;
+                txtNegPedido.Text = "0"; txtNegCliente.Text = "0";
+                CargarNegocio();
+            };
+            panelFiltros.Controls.Add(btnNegLimpiar);
+
+            dgvNegocio = CrearDgv();
+
+            lblResultadosNegocio = new Label
+            {
+                Dock = DockStyle.Bottom, Height = 24,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Padding = new Padding(4, 0, 0, 0),
+                BackColor = Color.FromArgb(220, 235, 220)
+            };
+
+            tab.Controls.Add(dgvNegocio);
+            tab.Controls.Add(lblResultadosNegocio);
+            tab.Controls.Add(panelFiltros);
+            return tab;
+        }
+
+        // ── Carga ─────────────────────────────────────────────────────────────
+
+        private void CargarSistema()
+        {
+            try
+            {
+                var dt = bllSistema.ObtenerTodos();
+                MostrarEnGrilla(dgvSistema, lblResultadosSistema, dt);
+            }
+            catch (Exception ex) { MostrarError(ex.Message); }
+        }
+
+        private void CargarNegocio()
+        {
+            try
+            {
+                var dt = bllNegocio.ObtenerTodos();
+                MostrarEnGrilla(dgvNegocio, lblResultadosNegocio, dt);
+            }
+            catch (Exception ex) { MostrarError(ex.Message); }
+        }
+
+        // ── Eventos ───────────────────────────────────────────────────────────
+
+        private void BtnBuscarSistema_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                DateTime? desde    = chkFiltrarFecha.Checked ? dtpDesde.Value  : (DateTime?)null;
+                DateTime? hasta    = chkFiltrarFecha.Checked ? dtpHasta.Value  : (DateTime?)null;
+                int uid            = int.TryParse(txtUsuario.Text, out int u) ? u : 0;
+                string actividad   = txtActividad.Text.Trim();
+                int criticidad     = cmbCriticidad.SelectedIndex;
+
+                var dt = bllSistema.BuscarPorFiltros(desde, hasta, uid, actividad, criticidad);
+                MostrarEnGrilla(dgvSistema, lblResultadosSistema, dt);
+            }
+            catch (Exception ex) { MostrarError(ex.Message); }
+        }
+
+        private void BtnBuscarNegocio_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                DateTime? desde   = chkNegFecha.Checked ? dtpNegDesde.Value : (DateTime?)null;
+                DateTime? hasta   = chkNegFecha.Checked ? dtpNegHasta.Value : (DateTime?)null;
+                string tipo       = cmbTipoEvento.SelectedIndex == 0 ? null : cmbTipoEvento.SelectedItem.ToString();
+                int? idPedido     = int.TryParse(txtNegPedido.Text, out int p) && p > 0 ? (int?)p : null;
+                int? idCliente    = int.TryParse(txtNegCliente.Text, out int c) && c > 0 ? (int?)c : null;
+
+                var dt = bllNegocio.BuscarPorFiltros(desde, hasta, tipo, idCliente, idPedido);
+                MostrarEnGrilla(dgvNegocio, lblResultadosNegocio, dt);
+            }
+            catch (Exception ex) { MostrarError(ex.Message); }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        private DataGridView CrearDgv()
+        {
+            return new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                BackgroundColor = Color.White,
+                RowHeadersVisible = false,
+                BorderStyle = BorderStyle.None,
                 AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
                 {
                     BackColor = Color.FromArgb(248, 248, 255)
                 }
             };
-
-            // Agregar controles al formulario (orden importa para el Dock layout)
-            this.Controls.Add(dgvBitacora);
-            this.Controls.Add(lblResultados);
-            this.Controls.Add(panelFiltros);
         }
 
-        /// <summary>
-        /// Carga todos los registros de la bitácora sin filtros y los muestra en la grilla.
-        /// </summary>
-        private void CargarRegistros()
+        private void MostrarEnGrilla(DataGridView dgv, Label lbl, DataTable datos, string contexto = null)
         {
-            try
-            {
-                DataTable datos = bitacoraBLL.ObtenerTodos();
-                MostrarEnGrilla(datos);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al cargar la bitácora:\n{ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            dgv.DataSource = datos;
+            string texto = $"  {datos.Rows.Count} registro(s)";
+            if (!string.IsNullOrEmpty(contexto)) texto += $"  —  {contexto}";
+            lbl.Text = texto;
         }
 
-        /// <summary>
-        /// Evento del botón "Ver" en el acceso rápido.
-        /// Consulta los registros de los últimos N días según el valor del NumericUpDown.
-        /// Cumple el requisito de "traer los últimos N días definibles por el usuario".
-        /// </summary>
-        private void BtnUltimosDias_Click(object sender, EventArgs e)
+        private void MostrarError(string msg)
         {
-            try
-            {
-                int dias = (int)nudDias.Value;
-                DataTable datos = bitacoraBLL.ObtenerUltimosNDias(dias);
-                MostrarEnGrilla(datos, $"últimos {dias} días");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al cargar registros:\n{ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        /// <summary>
-        /// Evento del botón Buscar: aplica los filtros combinados seleccionados.
-        /// Implementa la búsqueda combinada requerida por T06a.
-        /// </summary>
-        private void BtnBuscar_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                DateTime? desde     = chkFiltrarFecha.Checked ? dtpDesde.Value : (DateTime?)null;
-                DateTime? hasta     = chkFiltrarFecha.Checked ? dtpHasta.Value : (DateTime?)null;
-                int    usuarioId    = int.TryParse(txtUsuario.Text, out int uid) ? uid : 0;
-                string actividad    = txtActividad.Text.Trim();
-                int    criticidad   = cmbCriticidad.SelectedIndex; // 0=Todas, 1=None(0), 2=Baja(1)...
-
-                DataTable datos = bitacoraBLL.BuscarPorFiltros(desde, hasta, usuarioId, actividad, criticidad);
-                MostrarEnGrilla(datos);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error en la búsqueda:\n{ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        /// <summary>
-        /// Limpia todos los filtros y recarga todos los registros.
-        /// </summary>
-        private void BtnLimpiar_Click(object sender, EventArgs e)
-        {
-            chkFiltrarFecha.Checked     = false;
-            dtpDesde.Value              = DateTime.Today;
-            dtpHasta.Value              = DateTime.Today;
-            txtUsuario.Text             = "0";
-            txtActividad.Clear();
-            cmbCriticidad.SelectedIndex = 0;
-            nudDias.Value               = 7;
-
-            CargarRegistros();
-        }
-
-        /// <summary>
-        /// Asigna un DataTable a la grilla y actualiza el contador de resultados.
-        /// </summary>
-        /// <param name="datos">DataTable con los registros a mostrar.</param>
-        /// <param name="contexto">Descripción opcional del filtro aplicado (para el label).</param>
-        private void MostrarEnGrilla(DataTable datos, string contexto = null)
-        {
-            dgvBitacora.DataSource = datos;
-
-            string label = $"  {datos.Rows.Count} registro(s) encontrado(s)";
-            if (!string.IsNullOrEmpty(contexto))
-                label += $"  —  {contexto}";
-
-            lblResultados.Text = label;
+            MessageBox.Show($"Error: {msg}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

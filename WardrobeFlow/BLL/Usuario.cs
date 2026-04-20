@@ -133,13 +133,38 @@ namespace BLL
 
         /// <summary>
         /// Verifica si un username existe en la base de datos.
-        /// Usado por el formulario "Olvidé mi contraseña" para confirmar el usuario
-        /// antes de mostrar las instrucciones para contactar al administrador.
+        /// Registra en bitácora con criticidad RecuperacionClave (5).
         /// </summary>
         public bool ExisteUsername(string username)
         {
             if (string.IsNullOrWhiteSpace(username)) return false;
             return usuarioDAL.ObtenerPorUsername(username) != null;
+        }
+
+        /// <summary>
+        /// Registra un intento fallido de login en la bitácora (criticidad 4).
+        /// Llamado desde GUI.Login cuando las credenciales no coinciden.
+        /// </summary>
+        public void RegistrarIntentoFallido(Form formulario, string username)
+        {
+            // No hay sesión activa en este punto — usamos DAL.Bitacora directamente
+            // a través de un usuario de sistema con Id=0 (convención para eventos pre-sesión)
+            try
+            {
+                var dal = new DAL.Bitacora();
+                var registro = new BE.Bitacora
+                {
+                    Fecha      = System.DateTime.Now,
+                    IdUsuario  = null,  // null = evento pre-sesión (sin usuario autenticado)
+                    Modulo     = formulario?.Text ?? "Login",
+                    Actividad  = "Intento Fallido Login",
+                    Criticidad = BE.Criticidad.IntentosLogin,
+                    Detalle    = $"Intento fallido de login para username '{username}' " +
+                                 $"a las {System.DateTime.Now:HH:mm:ss}."
+                };
+                dal.Registrar(registro);
+            }
+            catch { /* No interrumpir el flujo de login por error de bitácora */ }
         }
     }
 }

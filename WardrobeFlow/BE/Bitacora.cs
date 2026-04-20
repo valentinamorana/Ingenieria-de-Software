@@ -23,8 +23,8 @@ namespace BE
         /// <summary>Fecha y hora del evento.</summary>
         public DateTime Fecha { get; set; }
 
-        /// <summary>ID del usuario que generó el evento.</summary>
-        public int IdUsuario { get; set; }
+        /// <summary>ID del usuario que generó el evento. NULL para eventos pre-sesión (login fallido, forgot password).</summary>
+        public int? IdUsuario { get; set; }
 
         /// <summary>Módulo o formulario donde ocurrió la actividad.</summary>
         public string Modulo { get; set; }

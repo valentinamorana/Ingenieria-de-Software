@@ -53,6 +53,9 @@ namespace GUI
                 }
                 else
                 {
+                    // Registrar intento fallido en bitácora (criticidad 4)
+                    usuarioBLL.RegistrarIntentoFallido(this, txtUsuario.Text);
+
                     lblError.Text = "Usuario o contraseña incorrectos.";
                     txtContraseña.Clear();
                     txtContraseña.Focus();

@@ -25,196 +25,45 @@ namespace GUI
         // BLL de usuarios para operaciones de negocio
         private readonly BLL.Usuario usuarioBLL = new BLL.Usuario();
 
-        // ── Controles del formulario ──────────────────────────────────────────
-        private DataGridView dgvUsuarios;
-        private TextBox txtUsername;
-        private TextBox txtContraseña;
-        private ComboBox cmbPerfil;
-        private Button btnAgregar;
-        private Button btnRefrescar;
-        private Button btnResetearClave;
-        private Label lblMensaje;
-
         /// <summary>
         /// Constructor: inicializa el formulario y construye la interfaz de gestión de usuarios.
         /// </summary>
         public Usuarios()
         {
             InitializeComponent();
-            this.Text        = "Gestión de Usuarios";
-            this.ClientSize  = new Size(820, 540);
-            this.MinimumSize = new Size(720, 460);
-
-            ConstruirInterfaz();
-
-            // Cargar lista de usuarios al abrir el formulario
-            this.Load += (s, e) => CargarUsuarios();
+            this.Load += new EventHandler(Usuarios_Load);
         }
 
-        /// <summary>
-        /// Construye la interfaz del formulario programáticamente.
-        /// Panel lateral derecho para operaciones, grilla central para la lista.
-        /// </summary>
-        private void ConstruirInterfaz()
+        // ── Eventos del Designer ──────────────────────────────────────────────
+
+        private void Usuarios_Load(object sender, EventArgs e)
         {
-            // ── Panel lateral derecho ─────────────────────────────────────────
-            Panel panelAlta = new Panel
-            {
-                Dock      = DockStyle.Right,
-                Width     = 240,
-                Padding   = new Padding(12),
-                BackColor = Color.FromArgb(245, 245, 250)
-            };
-
-            // ── Sección: Nuevo Usuario ────────────────────────────────────────
-            var lblTitulo = new Label
-            {
-                Text = "Nuevo Usuario",
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Left = 12, Top = 12, Width = 210
-            };
-
-            var lblUser = new Label { Text = "Nombre de usuario:", Left = 12, Top = 50, Width = 200 };
-            txtUsername = new TextBox { Left = 12, Top = 68, Width = 210 };
-
-            var lblPass = new Label { Text = "Contraseña:", Left = 12, Top = 100, Width = 200 };
-            txtContraseña = new TextBox
-            {
-                Left         = 12,
-                Top          = 118,
-                Width        = 210,
-                PasswordChar = '●'
-            };
-
-            var lblPerfil = new Label { Text = "Perfil (rol):", Left = 12, Top = 150, Width = 200 };
-            cmbPerfil = new ComboBox
-            {
-                Left          = 12, Top = 168, Width = 210,
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            cmbPerfil.Items.AddRange(new object[]
-            {
-                "Administrador",
-                "OperadorLogistico",
-                "Supervisor"
-            });
-            cmbPerfil.SelectedIndex = 1; // OperadorLogistico por defecto
-
-            btnAgregar = new Button
-            {
-                Text      = "Agregar Usuario",
-                Left      = 12,  Top    = 210,
-                Width     = 210, Height = 34,
-                BackColor = Color.SteelBlue,
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            btnAgregar.FlatAppearance.BorderSize = 0;
-            btnAgregar.Click += BtnAgregar_Click;
-
-            btnRefrescar = new Button
-            {
-                Text   = "↻ Refrescar Lista",
-                Left   = 12,  Top    = 253,
-                Width  = 210, Height = 28
-            };
-            btnRefrescar.Click += (s, e) => CargarUsuarios();
-
-            // ── Separador visual ──────────────────────────────────────────────
-            var separador = new Label
-            {
-                Left      = 12,  Top    = 292,
-                Width     = 210, Height = 1,
-                BackColor = Color.Silver
-            };
-
-            // ── Sección: Resetear Contraseña ──────────────────────────────────
-            var lblResetTitulo = new Label
-            {
-                Text = "Resetear Contraseña",
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                Left = 12, Top = 302, Width = 210
-            };
-
-            var lblResetInfo = new Label
-            {
-                Text      = "Seleccioná un usuario\nen la lista y presioná:",
-                Left      = 12, Top    = 325,
-                Width     = 210, Height = 36,
-                ForeColor = Color.DimGray,
-                Font      = new Font("Segoe UI", 8.5f)
-            };
-
-            btnResetearClave = new Button
-            {
-                Text      = "Resetear Contrasena",
-                Left      = 12,  Top    = 366,
-                Width     = 210, Height = 34,
-                BackColor = Color.FromArgb(180, 100, 30),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Enabled   = false   // se habilita cuando hay una fila seleccionada
-            };
-            btnResetearClave.FlatAppearance.BorderSize = 0;
-            btnResetearClave.Click += BtnResetearClave_Click;
-
-            // Mensaje de éxito o error
-            lblMensaje = new Label
-            {
-                Left      = 12,  Top    = 410,
-                Width     = 210, Height = 80,
-                ForeColor = Color.DarkGreen,
-                Font      = new Font("Segoe UI", 8.5f)
-            };
-
-            panelAlta.Controls.AddRange(new Control[]
-            {
-                lblTitulo, lblUser, txtUsername, lblPass, txtContraseña,
-                lblPerfil, cmbPerfil, btnAgregar, btnRefrescar,
-                separador, lblResetTitulo, lblResetInfo, btnResetearClave,
-                lblMensaje
-            });
-
-            // ── DataGridView — lista de usuarios ──────────────────────────────
-            dgvUsuarios = new DataGridView
-            {
-                Dock                            = DockStyle.Fill,
-                ReadOnly                        = true,
-                AllowUserToAddRows              = false,
-                AllowUserToDeleteRows           = false,
-                SelectionMode                   = DataGridViewSelectionMode.FullRowSelect,
-                AutoSizeColumnsMode             = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor                 = Color.White,
-                RowHeadersVisible               = false,
-                BorderStyle                     = BorderStyle.None,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
-                {
-                    BackColor = Color.FromArgb(248, 248, 255)
-                }
-            };
-
-            // Habilitar el botón Resetear solo cuando hay selección en la grilla
-            dgvUsuarios.SelectionChanged += (s, e) =>
-            {
-                btnResetearClave.Enabled = dgvUsuarios.SelectedRows.Count > 0;
-            };
-
-            // Label de título de la grilla
-            var lblListaTitulo = new Label
-            {
-                Text      = "Usuarios registrados en el sistema",
-                Dock      = DockStyle.Top,
-                Height    = 28,
-                Font      = new Font("Segoe UI", 9, FontStyle.Bold),
-                Padding   = new Padding(6, 6, 0, 0),
-                BackColor = Color.FromArgb(230, 230, 240)
-            };
-
-            // Agregar controles al formulario
-            this.Controls.Add(dgvUsuarios);
-            this.Controls.Add(lblListaTitulo);
-            this.Controls.Add(panelAlta);
+            CargarUsuarios();
         }
+
+        private void BtnRefrescar_Click(object sender, EventArgs e)
+        {
+            CargarUsuarios();
+        }
+
+        private void DgvUsuarios_SelectionChanged(object sender, EventArgs e)
+        {
+            bool haySeleccion = dgvUsuarios.SelectedRows.Count > 0;
+            btnResetearClave.Enabled = haySeleccion;
+
+            // Desbloquear solo se habilita si el usuario seleccionado está bloqueado
+            if (haySeleccion)
+            {
+                var estadoCell = dgvUsuarios.SelectedRows[0].Cells["Estado"];
+                btnDesbloquear.Enabled = estadoCell?.Value?.ToString() == "BLOQUEADA";
+            }
+            else
+            {
+                btnDesbloquear.Enabled = false;
+            }
+        }
+
+        // ── Carga ─────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Carga la lista de usuarios desde la BLL → DAL y la muestra en la grilla.
@@ -230,13 +79,26 @@ namespace GUI
                 tabla.Columns.Add("ID",       typeof(int));
                 tabla.Columns.Add("Username", typeof(string));
                 tabla.Columns.Add("Perfil",   typeof(string));
+                tabla.Columns.Add("Estado",   typeof(string));
 
                 foreach (var u in usuarios)
-                    tabla.Rows.Add(u.Id, u.Username, u.Perfil ?? "—");
+                    tabla.Rows.Add(u.Id, u.Username, u.Perfil ?? "—",
+                        u.Bloqueado ? "BLOQUEADA" : "Activo");
 
                 dgvUsuarios.DataSource = tabla;
-                lblMensaje.ForeColor   = Color.DarkGreen;
-                lblMensaje.Text        = $"{usuarios.Count} usuario(s) registrado(s).";
+
+                // Colorear filas bloqueadas en rojo claro para resaltar visualmente (T02)
+                foreach (DataGridViewRow fila in dgvUsuarios.Rows)
+                {
+                    if (fila.Cells["Estado"].Value?.ToString() == "BLOQUEADA")
+                    {
+                        fila.DefaultCellStyle.BackColor = Color.FromArgb(255, 220, 220);
+                        fila.DefaultCellStyle.ForeColor = Color.DarkRed;
+                    }
+                }
+
+                lblMensaje.ForeColor = Color.DarkGreen;
+                lblMensaje.Text      = $"{usuarios.Count} usuario(s) registrado(s).";
             }
             catch (Exception ex)
             {
@@ -244,43 +106,71 @@ namespace GUI
             }
         }
 
+        // ── Eventos de botones ────────────────────────────────────────────────
+
         /// <summary>
-        /// Evento del botón Agregar: valida, crea el usuario a través de BLL
-        /// (que hashea la contraseña) y refresca la lista.
+        /// Crea un nuevo usuario tras validar que el username sea numérico (DNI)
+        /// y que la contraseña tenga al menos 6 caracteres.
         /// </summary>
         private void BtnAgregar_Click(object sender, EventArgs e)
         {
-            lblMensaje.Text = string.Empty;
+            string username  = txtUsername.Text.Trim();
+            string password  = txtContraseña.Text;
+            string perfil    = cmbPerfil.SelectedItem?.ToString() ?? "";
 
-            if (string.IsNullOrWhiteSpace(txtUsername.Text))
+            // Validaciones de UI antes de llamar a BLL
+            if (string.IsNullOrWhiteSpace(username))
             {
                 MostrarError("El nombre de usuario es obligatorio.");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(txtContraseña.Text) || txtContraseña.Text.Length < 6)
+
+            // El username debe ser numérico (representa el DNI del empleado)
+            foreach (char c in username)
+            {
+                if (!char.IsDigit(c))
+                {
+                    MostrarError("El nombre de usuario solo puede contener números (DNI).");
+                    txtUsername.Focus();
+                    return;
+                }
+            }
+
+            if (username.Length < 7 || username.Length > 8)
+            {
+                MostrarError("El DNI debe tener entre 7 y 8 dígitos.");
+                txtUsername.Focus();
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
             {
                 MostrarError("La contraseña debe tener al menos 6 caracteres.");
                 return;
             }
 
-            if (cmbPerfil.SelectedIndex < 0)
+            if (string.IsNullOrWhiteSpace(perfil))
             {
                 MostrarError("Seleccioná un perfil/rol.");
                 return;
             }
 
+            // Mapear nombre visible → código interno que usa RolPermiso en la BD
+            string perfilInterno = perfil;
+            if (perfil == "Controlador de Stock")    perfilInterno = "ControladorDeStock";
+            if (perfil == "Operador de Inventario")  perfilInterno = "OperadorDeInventario";
+
             try
             {
-                string perfil = cmbPerfil.SelectedItem.ToString();
-                usuarioBLL.Alta(txtUsername.Text.Trim(), txtContraseña.Text, perfil);
+                usuarioBLL.Alta(this, username, password, perfilInterno);
 
-                lblMensaje.ForeColor = Color.DarkGreen;
-                lblMensaje.Text      = $"Usuario '{txtUsername.Text}' [{perfil}] creado.";
+                // Limpiar campos y refrescar lista
                 txtUsername.Clear();
                 txtContraseña.Clear();
-                cmbPerfil.SelectedIndex = 1;
+                cmbPerfil.SelectedIndex = 2;
 
                 CargarUsuarios();
+                MostrarOk($"Usuario '{username}' [{perfil}] creado correctamente.");
             }
             catch (Exception ex)
             {
@@ -289,53 +179,139 @@ namespace GUI
         }
 
         /// <summary>
-        /// Evento del botón Resetear Contraseña.
-        /// Obtiene el usuario seleccionado, abre un diálogo para ingresar la nueva clave
-        /// y delega el reseteo a BLL (que verifica permisos, hashea y persiste).
+        /// Resetea la contraseña del usuario seleccionado en la grilla.
+        /// Pide la nueva contraseña mediante un diálogo.
+        /// Solo funciona si el usuario en sesión es Administrador.
         /// </summary>
         private void BtnResetearClave_Click(object sender, EventArgs e)
         {
-            if (dgvUsuarios.SelectedRows.Count == 0) return;
-
-            // Leer el usuario seleccionado en la grilla
-            DataGridViewRow fila      = dgvUsuarios.SelectedRows[0];
-            int             idUsuario = Convert.ToInt32(fila.Cells["ID"].Value);
-            string          username  = fila.Cells["Username"].Value?.ToString() ?? "";
-
-            // Confirmación previa — acción irreversible
-            var confirmar = MessageBox.Show(
-                $"¿Está seguro que desea resetear la contraseña de '{username}'?\n\nEsta acción no se puede deshacer.",
-                "Confirmar Reset",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning,
-                MessageBoxDefaultButton.Button2);   // "No" es el botón por defecto
-
-            if (confirmar != DialogResult.Yes) return;
-
-            // Abrir diálogo para ingresar la nueva contraseña
-            using (var dialog = new ResetClaveDialog(username))
+            if (dgvUsuarios.SelectedRows.Count == 0)
             {
-                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                MostrarError("Seleccioná un usuario de la lista.");
+                return;
+            }
 
-                try
-                {
-                    usuarioBLL.ResetearClave(this, idUsuario, dialog.NuevaClave);
+            int    idUsuario = Convert.ToInt32(dgvUsuarios.SelectedRows[0].Cells["ID"].Value);
+            string username  = dgvUsuarios.SelectedRows[0].Cells["Username"].Value?.ToString() ?? "";
 
-                    lblMensaje.ForeColor = Color.DarkGreen;
-                    lblMensaje.Text      = $"Contrasena de '{username}' reseteada correctamente.";
-                }
-                catch (Exception ex)
-                {
-                    MostrarError(ex.Message);
-                }
+            string nuevaClave = PedirTexto(
+                $"Nueva contraseña para '{username}' (mínimo 6 caracteres):",
+                "Resetear Contraseña");
+
+            if (string.IsNullOrWhiteSpace(nuevaClave)) return;
+
+            try
+            {
+                usuarioBLL.ResetearClave(this, idUsuario, nuevaClave);
+                MostrarOk($"Contraseña de '{username}' reseteada correctamente.");
+            }
+            catch (Exception ex)
+            {
+                MostrarError(ex.Message);
             }
         }
 
-        /// <summary>Muestra un mensaje de error en el label de feedback.</summary>
-        private void MostrarError(string mensaje)
+        /// <summary>
+        /// Desbloquea la cuenta del usuario seleccionado en la grilla.
+        /// Solo funciona si el usuario en sesión es Administrador.
+        /// </summary>
+        private void BtnDesbloquear_Click(object sender, EventArgs e)
+        {
+            if (dgvUsuarios.SelectedRows.Count == 0)
+            {
+                MostrarError("Seleccioná un usuario bloqueado de la lista.");
+                return;
+            }
+
+            int    idUsuario = Convert.ToInt32(dgvUsuarios.SelectedRows[0].Cells["ID"].Value);
+            string username  = dgvUsuarios.SelectedRows[0].Cells["Username"].Value?.ToString() ?? "";
+
+            var confirm = MessageBox.Show(
+                $"¿Desbloquear la cuenta de '{username}'?",
+                "Confirmar Desbloqueo",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (confirm != DialogResult.Yes) return;
+
+            try
+            {
+                usuarioBLL.Desbloquear(this, idUsuario, username);
+                CargarUsuarios();
+                MostrarOk($"Cuenta '{username}' desbloqueada correctamente.");
+            }
+            catch (Exception ex)
+            {
+                MostrarError(ex.Message);
+            }
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        private void MostrarError(string msg)
         {
             lblMensaje.ForeColor = Color.DarkRed;
-            lblMensaje.Text      = $"✗ {mensaje}";
+            lblMensaje.Text      = msg;
+        }
+
+        private void MostrarOk(string msg)
+        {
+            lblMensaje.ForeColor = Color.DarkGreen;
+            lblMensaje.Text      = msg;
+        }
+
+        /// <summary>
+        /// Diálogo de entrada de texto simple — reemplaza Microsoft.VisualBasic.Interaction.InputBox
+        /// para evitar dependencia externa en el proyecto GUI.
+        /// </summary>
+        private string PedirTexto(string mensaje, string titulo)
+        {
+            using (Form dlg = new Form())
+            {
+                dlg.Text            = titulo;
+                dlg.ClientSize      = new System.Drawing.Size(360, 130);
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition  = FormStartPosition.CenterParent;
+                dlg.MaximizeBox    = false;
+                dlg.MinimizeBox    = false;
+
+                var lbl = new Label
+                {
+                    Text     = mensaje,
+                    Left     = 12, Top   = 12,
+                    Width    = 336, Height = 32,
+                    Font     = new Font("Segoe UI", 9f)
+                };
+
+                var txt = new TextBox
+                {
+                    Left         = 12,  Top   = 50,
+                    Width        = 336, Height = 24,
+                    PasswordChar = '●'
+                };
+
+                var btnOk = new Button
+                {
+                    Text         = "Aceptar",
+                    Left         = 168, Top    = 88,
+                    Width        = 80,  Height = 28,
+                    DialogResult = DialogResult.OK
+                };
+                var btnCancelar = new Button
+                {
+                    Text         = "Cancelar",
+                    Left         = 260, Top    = 88,
+                    Width        = 88,  Height = 28,
+                    DialogResult = DialogResult.Cancel
+                };
+
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCancelar;
+                dlg.Controls.AddRange(new Control[] { lbl, txt, btnOk, btnCancelar });
+
+                return dlg.ShowDialog(this) == DialogResult.OK ? txt.Text : string.Empty;
+            }
         }
     }
 }

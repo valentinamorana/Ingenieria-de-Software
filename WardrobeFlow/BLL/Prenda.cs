@@ -59,7 +59,7 @@ namespace BLL
             int idNuevo = dalPrenda.Alta(prenda);
             prenda.IdPrenda = idNuevo;
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Alta Prenda: {prenda.Nombre} (Talle {prenda.Talle}, {prenda.Color})",
                 BE.Criticidad.Baja);
 
@@ -78,9 +78,12 @@ namespace BLL
             Validar(prenda);
             dalPrenda.Modificar(prenda);
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Modificar Prenda ID {prenda.IdPrenda}: {prenda.Nombre}",
                 BE.Criticidad.Baja);
+            bitacoraNeg.Registrar(BE.TipoEventoNegocio.ModificacionPrenda,
+                $"Modificación prenda: '{prenda.Nombre}' (ID {prenda.IdPrenda}) — Talle {prenda.Talle}, {prenda.Color}",
+                idPrenda: prenda.IdPrenda);
         }
 
         /// <summary>
@@ -104,7 +107,7 @@ namespace BLL
 
             dalPrenda.CambiarEstado(prenda.IdPrenda, nuevoEstado, idCliente);
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Estado Prenda ID {prenda.IdPrenda} '{prenda.Nombre}': " +
                 $"{prenda.Estado} → {nuevoEstado}",
                 BE.Criticidad.Media);
@@ -141,8 +144,8 @@ namespace BLL
 
             if (actual == BE.EstadoPrenda.EnUso)
                 throw new Exception(
-                    "No se puede cambiar el estado de una prenda en uso.\n" +
-                    "Primero debe ser devuelta por el cliente.");
+                    "No se puede cambiar manualmente el estado de una prenda en uso.\n" +
+                    "El estado se actualiza autom\u00e1ticamente al procesar pedidos.");
         }
     }
 }

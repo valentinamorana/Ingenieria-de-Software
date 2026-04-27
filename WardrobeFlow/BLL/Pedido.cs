@@ -96,7 +96,7 @@ namespace BLL
 
             int idNuevo = dalPedido.Alta(pedido);
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Nuevo Pedido #{idNuevo} — Cliente: {cliente.NombreCompleto} — " +
                 $"{prendas.Count} prenda(s) — Plan: {plan.Nombre}",
                 BE.Criticidad.Media);
@@ -127,7 +127,7 @@ namespace BLL
 
             dalPedido.Despachar(pedido.IdPedido);
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Despachar Pedido #{pedido.IdPedido} — Cliente: {pedido.NombreCliente} — " +
                 $"{pedido.CantidadPrendas} prenda(s)",
                 BE.Criticidad.Media);
@@ -153,7 +153,7 @@ namespace BLL
 
             dalPedido.MarcarEntregado(pedido.IdPedido);
 
-            bitacora.Registrar(formulario,
+            bitacora.Registrar(formulario.Text,
                 $"Entrega Pedido #{pedido.IdPedido} — Cliente: {pedido.NombreCliente}",
                 BE.Criticidad.Baja);
 
@@ -167,48 +167,75 @@ namespace BLL
         // ── Cancelación ───────────────────────────────────────────────────────
 
         /// <summary>
-        /// Cancela un pedido pendiente y libera las prendas a estado Disponible.
+        /// Cancela un pedido pendiente, guarda el motivo y libera las prendas a Disponible.
         /// Solo se puede cancelar si el estado es Pendiente.
         /// </summary>
-        public void Cancelar(Form formulario, BE.Pedido pedido)
+        public void Cancelar(Form formulario, BE.Pedido pedido, string motivo)
         {
             if (pedido.Estado != BE.EstadoPedido.Pendiente)
                 throw new Exception(
                     $"Solo se pueden cancelar pedidos en estado Pendiente.\n" +
                     $"Este pedido está '{pedido.Estado}'.");
 
-            dalPedido.Cancelar(pedido.IdPedido);
+            if (string.IsNullOrWhiteSpace(motivo))
+                throw new Exception("Es obligatorio ingresar un motivo de cancelación.");
 
-            bitacora.Registrar(formulario,
-                $"Cancelar Pedido #{pedido.IdPedido} — Cliente: {pedido.NombreCliente}",
+            dalPedido.Cancelar(pedido.IdPedido, motivo.Trim());
+
+            bitacora.Registrar(formulario.Text,
+                $"Cancelar Pedido #{pedido.IdPedido} — Cliente: {pedido.NombreCliente} — Motivo: {motivo}",
                 BE.Criticidad.Media);
 
             bitacoraNeg.Registrar(
                 BE.TipoEventoNegocio.Cancelacion,
-                $"Pedido #{pedido.IdPedido} cancelado — Cliente: {pedido.NombreCliente}",
+                $"Pedido #{pedido.IdPedido} cancelado — Cliente: {pedido.NombreCliente} — Motivo: {motivo}",
                 idPedido:  pedido.IdPedido,
                 idCliente: pedido.IdCliente);
         }
 
-        // ── Helpers privados ──────────────────────────────────────────────────
+        /// <summary>
+        /// Revierte la cancelación de un pedido, volviendo a Pendiente y re-asignando prendas.
+        /// Solo posible si todas las prendas del pedido siguen Disponibles.
+        /// </summary>
+        public void DesCancelar(Form formulario, BE.Pedido pedido)
+        {
+            if (pedido.Estado != BE.EstadoPedido.Cancelado)
+                throw new Exception(
+                    $"Solo se pueden des-cancelar pedidos Cancelados.\n" +
+                    $"Este pedido está '{pedido.Estado}'.");
+
+            bool ok = dalPedido.DesCancelar(pedido.IdPedido, pedido.IdCliente);
+
+            if (!ok)
+                throw new Exception(
+                    $"No se puede des-cancelar el Pedido #{pedido.IdPedido}.\n" +
+                                        "Una o más prendas del pedido ya no están disponibles.");
+
+            bitacora.Registrar(formulario.Text,
+                $"Des-cancelar Pedido #{pedido.IdPedido} — Cliente: {pedido.NombreCliente}",
+                BE.Criticidad.Media);
+
+            bitacoraNeg.Registrar(
+                BE.TipoEventoNegocio.Venta,
+                $"Pedido #{pedido.IdPedido} des-cancelado — Cliente: {pedido.NombreCliente}",
+                idPedido:  pedido.IdPedido,
+                idCliente: pedido.IdCliente);
+        }
+
+        // ── Helper privado ────────────────────────────────────────────────
 
         /// <summary>
-        /// Busca el Empleado vinculado al usuario activo en la sesión.
-        /// Lanza excepción si el usuario no tiene empleado asociado.
+        /// Resuelve el IdEmpleado del usuario en sesión.
+        /// Lanza excepción si el usuario no tiene Empleado vinculado.
         /// </summary>
         private int ResolverEmpleadoActivo()
         {
-            if (!Seguridad.SessionManager.IsLoggedIn)
-                throw new Exception("No hay sesión activa.");
-
-            int idUsuario = Seguridad.SessionManager.GetInstance.Usuario.Id;
-            var empleado  = dalEmpleado.ObtenerPorUsuario(idUsuario);
-
+            var usuario  = Seguridad.SessionManager.GetInstance.Usuario;
+            var empleado = new DAL.Empleado().ObtenerPorUsuario(usuario.Id);
             if (empleado == null)
                 throw new Exception(
-                    "El usuario activo no tiene un Empleado vinculado en el sistema.\n" +
-                    "Contactá al Administrador para vincular tu usuario a un empleado.");
-
+                    $"El usuario '{usuario.Username}' no tiene un Empleado vinculado.\n" +
+                    "Pedíle al Administrador que configure el vínculo.");
             return empleado.IdEmpleado;
         }
     }

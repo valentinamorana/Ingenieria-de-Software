@@ -8,14 +8,18 @@ namespace GUI
     /// Capa de Presentación — Formulario Menú Principal (MDI Container).
     ///
     /// Al iniciarse, construye el menú dinámicamente según los permisos
-    /// del usuario logueado (cargados desde RolPermiso en el Login):
+    /// del usuario logueado (cargados desde RolPermiso en el Login).
     ///
-    ///   Administrador        → Perfil | Administrar (Usuarios) | Bitácora
-    ///   Supervisor           → Perfil | Bitácora
-    ///   OperadorLogistico    → Perfil | Inventario (Prendas, Outfits, Categorias)
-    ///   Vendedor             → Perfil | Ventas (Clientes, Planes, Pedidos de Venta)
-    ///   ControladorDeStock   → Perfil | Inventario (Prendas, Stock)
-    ///   OperadorDeInventario → Perfil | Ventas (Pedidos Realizados)
+    /// Roles del sistema (documento G04 — WardrobeFlow_Iteracion1.docx):
+    ///
+    ///   Administrador     → TODO: Inventario | Ventas | Administrar | Bitácora
+    ///   Supervisor        → Bitácora
+    ///   OperadorLogistico → Inventario (Prendas, Outfits, Categorias, Pedidos Realizados)
+    ///
+    /// Roles adicionales (implementación, no están en G04):
+    ///   Vendedor             → Ventas (Clientes, Planes, Pedidos de Venta)
+    ///   ControladorDeStock   → Inventario (Prendas, Stock)
+    ///   OperadorDeInventario → Ventas (Pedidos Realizados)
     ///
     /// Los permisos se leen de BE.Usuario.Permisos via BLL.ObtenerUsuarioActivo().
     /// La GUI nunca accede directamente a Seguridad ni a DAL.
@@ -42,17 +46,21 @@ namespace GUI
 
         /// <summary>
         /// Muestra u oculta los ítems del menú según los permisos del usuario.
+        /// La lógica es completamente basada en permisos (NombreMenu), no en roles.
         ///
         /// Mapeo NombreMenu → ToolStripMenuItem:
         ///   mnuPrendas            → prendasToolStripMenuItem       (bajo Inventario)
         ///   mnuOutfits            → outfitsToolStripMenuItem        (bajo Inventario)
         ///   mnuCategorias         → categoriasToolStripMenuItem     (bajo Inventario)
-        ///   mnuStock              → (futuro: stockToolStripMenuItem bajo Inventario)
+        ///   mnuStock              → stockToolStripMenuItem          (bajo Inventario — pendiente en Designer)
         ///   mnuClientes           → clientesToolStripMenuItem       (bajo Ventas)
         ///   mnuPlanSuscripciones  → planesToolStripMenuItem         (bajo Ventas)
         ///   mnuPedidosVenta       → pedidosVentaToolStripMenuItem   (bajo Ventas)
-        ///   mnuUsuarios           → gestionToolStripMenuItem + usuariosToolStripMenuItem
+        ///   mnuPedidosRealizados  → pedidosRealizadosToolStripMenuItem (bajo Ventas)
+        ///   mnuUsuarios           → gestionToolStripMenuItem        (bajo Administrar)
         ///   mnuAuditoria          → bitacoraToolStripMenuItem
+        ///
+        /// Administrador tiene los 10 permisos → ve todo el menú.
         /// </summary>
         private void AplicarPermisos(List<BE.Permiso> permisos)
         {
@@ -70,15 +78,15 @@ namespace GUI
                 nombresMenu.Add(p.NombreMenu);
 
             // ── Inventario ────────────────────────────────────────────────────
-            bool tienePrendas    = nombresMenu.Contains("mnuPrendas");
-            bool tieneOutfits    = nombresMenu.Contains("mnuOutfits");
-            bool tieneCategorias = nombresMenu.Contains("mnuCategorias");
+            bool tienePrendas = nombresMenu.Contains("mnuPrendas");
+            bool tieneStock   = nombresMenu.Contains("mnuStock");
 
+            // Outfits y Categorías eliminados de la interfaz (módulos no implementados)
             prendasToolStripMenuItem.Visible    = tienePrendas;
-            outfitsToolStripMenuItem.Visible    = tieneOutfits;
-            categoriasToolStripMenuItem.Visible = tieneCategorias;
+            outfitsToolStripMenuItem.Visible    = false;
+            categoriasToolStripMenuItem.Visible = false;
 
-            inventarioToolStripMenuItem.Visible = tienePrendas || tieneOutfits || tieneCategorias;
+            inventarioToolStripMenuItem.Visible = tienePrendas || tieneStock;
 
             // ── Ventas ────────────────────────────────────────────────────────
             bool tieneClientes     = nombresMenu.Contains("mnuClientes");
@@ -95,7 +103,9 @@ namespace GUI
                 tieneClientes || tienePlanes || tienePedidosVenta || tienePedidosReal;
 
             // ── Administrar (Usuarios) ────────────────────────────────────────
-            gestionToolStripMenuItem.Visible = nombresMenu.Contains("mnuUsuarios");
+            bool tieneUsuarios = nombresMenu.Contains("mnuUsuarios");
+            usuariosToolStripMenuItem.Visible = tieneUsuarios;
+            gestionToolStripMenuItem.Visible  = tieneUsuarios;
 
             // ── Bitácora ──────────────────────────────────────────────────────
             bitacoraToolStripMenuItem.Visible = nombresMenu.Contains("mnuAuditoria");
@@ -157,26 +167,22 @@ namespace GUI
 
         /// <summary>
         /// Abre el módulo de Outfits como hijo MDI.
+        /// TODO: implementar cuando se cree el formulario Outfits.
         /// </summary>
         private void outfitsToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            foreach (Form hijo in this.MdiChildren)
-            {
-                if (hijo is Outfits) { hijo.BringToFront(); return; }
-            }
-            new Outfits { MdiParent = this }.Show();
+            MessageBox.Show("El módulo de Outfits aún no está disponible.",
+                "Próximamente", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>
         /// Abre el módulo de Categorías como hijo MDI.
+        /// TODO: implementar cuando se cree el formulario Categorias.
         /// </summary>
         private void categoriasToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            foreach (Form hijo in this.MdiChildren)
-            {
-                if (hijo is Categorias) { hijo.BringToFront(); return; }
-            }
-            new Categorias { MdiParent = this }.Show();
+            MessageBox.Show("El módulo de Categorías aún no está disponible.",
+                "Próximamente", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         /// <summary>

@@ -14,8 +14,9 @@ namespace GUI
     ///
     ///   ✓ Ver listado de planes (activos e inactivos)
     ///   ✓ Crear nuevo plan
-    ///   ✓ Editar plan existente
+    ///   ✓ Editar plan existente (doble clic en la grilla)
     ///   ✓ Desactivar plan (baja lógica)
+    ///   ✓ Reactivar plan desactivado
     ///
     /// Accesible desde Menú → Ventas → Planes (permiso mnuPlanSuscripciones).
     /// </summary>
@@ -23,144 +24,30 @@ namespace GUI
     {
         private readonly BLL.PlanSuscripcion planBLL = new BLL.PlanSuscripcion();
 
-        // ── Controles ─────────────────────────────────────────────────────────
-        private DataGridView dgvPlanes;
-        private TextBox      txtNombre;
-        private NumericUpDown nudLimite;
-        private NumericUpDown nudPrecio;
-        private Button       btnGuardar;
-        private Button       btnNuevo;
-        private Button       btnDesactivar;
-        private Label        lblMensaje;
-        private Label        lblFormTitulo;
-
         private List<BE.PlanSuscripcion> _planes = new List<BE.PlanSuscripcion>();
         private int _idEnEdicion = 0;  // 0 = modo alta
 
         public Planes()
         {
             InitializeComponent();
-            this.Text        = "Planes de Suscripción";
-            this.ClientSize  = new Size(820, 500);
-            this.MinimumSize = new Size(700, 420);
-
-            ConstruirInterfaz();
-            this.Load += (s, e) => CargarPlanes();
+            this.Load += new EventHandler(Planes_Load);
         }
 
-        private void ConstruirInterfaz()
+        // ── Eventos del Designer ──────────────────────────────────────────────
+
+        private void Planes_Load(object sender, EventArgs e)
         {
-            // ── Panel derecho: formulario ─────────────────────────────────────
-            Panel panelForm = new Panel
-            {
-                Dock = DockStyle.Right, Width = 260,
-                Padding = new Padding(12),
-                BackColor = Color.FromArgb(245, 245, 250)
-            };
+            CargarPlanes();
+        }
 
-            lblFormTitulo = new Label
-            {
-                Text = "Nuevo Plan", Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Left = 12, Top = 12, Width = 230
-            };
+        private void BtnNuevo_Click(object sender, EventArgs e)
+        {
+            LimpiarFormulario();
+        }
 
-            var lblNombre = new Label { Text = "Nombre del plan *", Left = 12, Top = 50, Width = 230 };
-            txtNombre = new TextBox { Left = 12, Top = 68, Width = 230 };
-
-            var lblLimite = new Label { Text = "Límite de prendas *", Left = 12, Top = 100, Width = 230 };
-            nudLimite = new NumericUpDown
-            {
-                Left = 12, Top = 118, Width = 110,
-                Minimum = 1, Maximum = 50, Value = 3
-            };
-
-            var lblPrecio = new Label { Text = "Precio mensual ($) *", Left = 12, Top = 150, Width = 230 };
-            nudPrecio = new NumericUpDown
-            {
-                Left = 12, Top = 168, Width = 150,
-                Minimum = 0, Maximum = 999999, DecimalPlaces = 2,
-                Value = 0
-            };
-
-            btnGuardar = new Button
-            {
-                Text = "Guardar Plan", Left = 12, Top = 210,
-                Width = 230, Height = 34,
-                BackColor = Color.SteelBlue, ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            btnGuardar.FlatAppearance.BorderSize = 0;
-            btnGuardar.Click += BtnGuardar_Click;
-
-            btnNuevo = new Button
-            {
-                Text = "Limpiar / Nuevo", Left = 12, Top = 252,
-                Width = 230, Height = 28,
-                FlatStyle = FlatStyle.Flat
-            };
-            btnNuevo.Click += (s, e) => LimpiarFormulario();
-
-            var separador = new Label
-            {
-                Left = 12, Top = 292, Width = 230, Height = 1,
-                BackColor = Color.Silver
-            };
-
-            btnDesactivar = new Button
-            {
-                Text = "Desactivar Plan Seleccionado", Left = 12, Top = 302,
-                Width = 230, Height = 34,
-                BackColor = Color.FromArgb(160, 80, 30), ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat, Enabled = false
-            };
-            btnDesactivar.FlatAppearance.BorderSize = 0;
-            btnDesactivar.Click += BtnDesactivar_Click;
-
-            lblMensaje = new Label
-            {
-                Left = 12, Top = 346, Width = 230, Height = 80,
-                Font = new Font("Segoe UI", 8.5f)
-            };
-
-            panelForm.Controls.AddRange(new Control[]
-            {
-                lblFormTitulo, lblNombre, txtNombre,
-                lblLimite, nudLimite, lblPrecio, nudPrecio,
-                btnGuardar, btnNuevo, separador, btnDesactivar, lblMensaje
-            });
-
-            // ── DataGridView ──────────────────────────────────────────────────
-            dgvPlanes = new DataGridView
-            {
-                Dock                            = DockStyle.Fill,
-                ReadOnly                        = true,
-                AllowUserToAddRows              = false,
-                AllowUserToDeleteRows           = false,
-                SelectionMode                   = DataGridViewSelectionMode.FullRowSelect,
-                AutoSizeColumnsMode             = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor                 = Color.White,
-                RowHeadersVisible               = false,
-                BorderStyle                     = BorderStyle.None,
-                AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
-                {
-                    BackColor = Color.FromArgb(248, 248, 255)
-                }
-            };
-            dgvPlanes.SelectionChanged     += DgvPlanes_SelectionChanged;
-            dgvPlanes.CellDoubleClick      += (s, e) => CargarPlanEnFormulario();
-
-            var lblTituloGrilla = new Label
-            {
-                Text = "Planes registrados",
-                Dock = DockStyle.Top, Height = 28,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Padding = new Padding(6, 6, 0, 0),
-                BackColor = Color.FromArgb(230, 230, 240)
-            };
-
-            this.Controls.Add(dgvPlanes);
-            this.Controls.Add(lblTituloGrilla);
-            this.Controls.Add(panelForm);
+        private void DgvPlanes_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            CargarPlanEnFormulario();
         }
 
         // ── Carga ─────────────────────────────────────────────────────────────
@@ -171,11 +58,11 @@ namespace GUI
             {
                 _planes = planBLL.ObtenerTodos();
                 var tabla = new DataTable();
-                tabla.Columns.Add("ID",       typeof(int));
-                tabla.Columns.Add("Nombre",   typeof(string));
-                tabla.Columns.Add("Prendas",  typeof(int));
-                tabla.Columns.Add("Precio",   typeof(string));
-                tabla.Columns.Add("Estado",   typeof(string));
+                tabla.Columns.Add("ID",      typeof(int));
+                tabla.Columns.Add("Nombre",  typeof(string));
+                tabla.Columns.Add("Prendas", typeof(int));
+                tabla.Columns.Add("Precio",  typeof(string));
+                tabla.Columns.Add("Estado",  typeof(string));
 
                 foreach (var p in _planes)
                     tabla.Rows.Add(p.IdPlan, p.Nombre, p.LimitePrendas,
@@ -184,6 +71,16 @@ namespace GUI
                 dgvPlanes.DataSource = tabla;
                 if (dgvPlanes.Columns.Contains("ID"))
                     dgvPlanes.Columns["ID"].Width = 40;
+
+                // Resaltar planes inactivos en gris claro
+                foreach (DataGridViewRow fila in dgvPlanes.Rows)
+                {
+                    if (fila.Cells["Estado"].Value?.ToString() == "Inactivo")
+                    {
+                        fila.DefaultCellStyle.ForeColor = Color.Gray;
+                        fila.DefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Italic);
+                    }
+                }
 
                 MostrarOk($"{_planes.Count} plan(es) cargado(s).");
             }
@@ -195,13 +92,26 @@ namespace GUI
 
         private void DgvPlanes_SelectionChanged(object sender, EventArgs e)
         {
-            btnDesactivar.Enabled = dgvPlanes.SelectedRows.Count > 0;
+            if (dgvPlanes.SelectedRows.Count == 0)
+            {
+                btnDesactivar.Enabled = false;
+                btnActivar.Enabled    = false;
+                return;
+            }
+
+            int id   = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
+            var plan = _planes.Find(p => p.IdPlan == id);
+            if (plan == null) return;
+
+            // Solo se muestra el botón relevante según el estado actual
+            btnDesactivar.Enabled = plan.Estado;   // activo → puede desactivar
+            btnActivar.Enabled    = !plan.Estado;  // inactivo → puede activar
         }
 
         private void CargarPlanEnFormulario()
         {
             if (dgvPlanes.SelectedRows.Count == 0) return;
-            int id = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
+            int id   = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
             var plan = _planes.Find(p => p.IdPlan == id);
             if (plan == null) return;
 
@@ -223,7 +133,7 @@ namespace GUI
             dgvPlanes.ClearSelection();
         }
 
-        // ── Eventos ───────────────────────────────────────────────────────────
+        // ── Eventos de botones ────────────────────────────────────────────────
 
         private void BtnGuardar_Click(object sender, EventArgs e)
         {
@@ -262,7 +172,7 @@ namespace GUI
         private void BtnDesactivar_Click(object sender, EventArgs e)
         {
             if (dgvPlanes.SelectedRows.Count == 0) return;
-            int id = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
+            int id   = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
             var plan = _planes.Find(p => p.IdPlan == id);
             if (plan == null) return;
 
@@ -281,10 +191,32 @@ namespace GUI
                 LimpiarFormulario();
                 CargarPlanes();
             }
-            catch (Exception ex)
+            catch (Exception ex) { MostrarError(ex.Message); }
+        }
+
+        private void BtnActivar_Click(object sender, EventArgs e)
+        {
+            if (dgvPlanes.SelectedRows.Count == 0) return;
+            int id   = Convert.ToInt32(dgvPlanes.SelectedRows[0].Cells["ID"].Value);
+            var plan = _planes.Find(p => p.IdPlan == id);
+            if (plan == null) return;
+
+            var confirm = MessageBox.Show(
+                $"¿Reactivar el plan '{plan.Nombre}'?\n\nEl plan volverá a estar disponible para nuevas suscripciones.",
+                "Confirmar Activación",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button1);
+
+            if (confirm != DialogResult.Yes) return;
+
+            try
             {
-                MostrarError(ex.Message);
+                planBLL.Activar(id);
+                MostrarOk($"Plan '{plan.Nombre}' reactivado.");
+                LimpiarFormulario();
+                CargarPlanes();
             }
+            catch (Exception ex) { MostrarError(ex.Message); }
         }
 
         private void MostrarOk(string msg)

@@ -1,6 +1,7 @@
 using Seguridad;
 using Servicios;
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace BLL
@@ -9,80 +10,118 @@ namespace BLL
     /// Capa de Lógica de Negocio — Gestión de Usuarios.
     ///
     /// RESPONSABILIDADES:
-    ///   - Validar credenciales de Login usando PBKDF2-SHA256
+    ///   - Validar credenciales de Login usando PBKDF2-SHA256 (Encriptador)
+    ///   - Controlar bloqueo automático tras 3 intentos fallidos consecutivos (T02)
     ///   - Cargar permisos del rol tras autenticación exitosa
     ///   - Establecer y destruir la sesión via SessionManager (Singleton)
-    ///   - Registrar eventos en Bitácora
-    ///   - Crear nuevos usuarios con contraseñas hasheadas y rol asignado
+    ///   - Registrar todos los eventos relevantes en Bitácora
+    ///   - Crear/resetear usuarios; desbloquear cuentas (solo Administrador)
     ///
-    /// FLUJO DE LOGIN:
+    /// FLUJO DE LOGIN (T02 §CU001):
     ///   1. Validar campos no vacíos
-    ///   2. Buscar usuario en BD (DAL)
-    ///   3. Verificar contraseña con PBKDF2-SHA256 (Encriptador)
-    ///   4. Cargar permisos del rol desde RolPermiso (DAL.Permiso)
-    ///   5. Establecer sesión con usuario + permisos (SessionManager)
-    ///   6. Registrar en bitácora
+    ///   2. Buscar usuario en BD (incluye IntentosFallidos actual)
+    ///   3. Verificar si la cuenta está bloqueada → lanzar excepción si es así
+    ///   4. Verificar contraseña con PBKDF2-SHA256
+    ///   5a. Si OK: resetear IntentosFallidos en BD + cargar permisos + sesión + bitácora
+    ///   5b. Si falla: incrementar IntentosFallidos en BD; si ≥ 3 → bloquear + bitácora
+    ///
+    /// BLOQUEO DE CUENTA:
+    ///   El contador IntentosFallidos persiste en BD — sobrevive reinicios de la app.
+    ///   El estado BLOQUEADO (Estado=0) persiste en BD hasta que un Administrador
+    ///   lo desbloquee desde Administrar → Usuarios (también resetea el contador).
     /// </summary>
     public class Usuario
     {
-        private readonly DAL.Usuario    usuarioDAL  = new DAL.Usuario();
-        private readonly DAL.Permiso    permisoDAL  = new DAL.Permiso();
-        private readonly Servicios.Bitacora bitacora = new Servicios.Bitacora();
+        private readonly DAL.Usuario        usuarioDAL = new DAL.Usuario();
+        private readonly DAL.Permiso        permisoDAL = new DAL.Permiso();
+        private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
+
+        private const int MaxIntentosFallidos = 3;
+
+        // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
         /// Autentica un usuario y establece la sesión con sus permisos cargados.
+        /// Controla automáticamente el bloqueo de cuenta tras 3 intentos fallidos.
+        /// El contador de intentos se persiste en BD (no en memoria).
         /// </summary>
-        /// <param name="formulario">Formulario de Login (módulo para bitácora).</param>
-        /// <param name="username">Nombre de usuario ingresado.</param>
-        /// <param name="contraseña">Contraseña en texto plano.</param>
-        /// <returns>true si las credenciales son válidas; false si no coinciden.</returns>
         public bool Login(Form formulario, string username, string contraseña)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(contraseña))
                 throw new Exception("Usuario y contraseña son obligatorios.");
 
-            // 1. Buscar usuario en BD
+            // 1. Buscar usuario en BD (incluye IntentosFallidos actual)
             BE.Usuario usuario = usuarioDAL.ObtenerPorUsername(username);
             if (usuario == null) return false;
 
-            // 2. Verificar contraseña con PBKDF2-SHA256
+            // 2. Verificar si la cuenta ya está bloqueada en BD (T02 §3.2)
+            if (usuario.Bloqueado)
+                throw new Exception(
+                    $"La cuenta '{username}' está bloqueada.\n" +
+                    "Contactá al Administrador para que la reactive desde Administrar → Usuarios.");
+
+            // 3. Verificar contraseña con PBKDF2-SHA256
             bool esValido = Encriptador.VerificarContraseña(contraseña, usuario.Contraseña);
 
             if (esValido)
             {
-                // 3. Cargar permisos del rol ANTES de crear la sesión,
-                //    para que el SessionManager almacene el usuario ya enriquecido
-                usuario.Permisos = permisoDAL.ObtenerPorRol(usuario.Perfil);
+                // Credenciales correctas → resetear contador en BD
+                usuarioDAL.ResetearIntentosFallidos(username);
 
-                // 4. Crear la sesión — patrón Singleton del profesor
+                // 4. Cargar permisos del rol
+                usuario.Permisos = permisoDAL.ObtenerPorRol(usuario.Rol ?? usuario.Perfil);
+
+                // 5. Crear sesión Singleton
                 SessionManager.Login(usuario);
 
-                // 5. Registrar login en bitácora
-                bitacora.Registrar(formulario, "Inicio Sesion", BE.Criticidad.None);
+                // 6. Registrar en bitácora
+                bitacora.Registrar(formulario.Text, "Inicio Sesion", BE.Criticidad.None);
+            }
+            else
+            {
+                // Credenciales incorrectas → incrementar contador en BD
+                usuarioDAL.IncrementarIntentosFallidos(username);
+                int intentos = usuario.IntentosFallidos + 1;  // valor actualizado localmente
+
+                // Registrar intento fallido en bitácora
+                RegistrarIntentoFallidoInterno(formulario.Text, username, intentos, usuario.Id);
+
+                // Si alcanzó el límite → bloquear cuenta en BD
+                if (intentos >= MaxIntentosFallidos)
+                {
+                    usuarioDAL.Bloquear(usuario.Id);
+                    RegistrarBloqueo(formulario.Text, username, usuario.Id);
+
+                    throw new Exception(
+                        $"La cuenta '{username}' ha sido bloqueada tras {MaxIntentosFallidos} " +
+                        "intentos fallidos consecutivos.\n" +
+                        "Contactá al Administrador para reactivarla.");
+                }
+
+                int restantes = MaxIntentosFallidos - intentos;
+                throw new Exception(
+                    $"Usuario o contraseña incorrectos.\n" +
+                    $"Intentos restantes antes del bloqueo: {restantes}.");
             }
 
             return esValido;
         }
 
         /// <summary>
-        /// Cierra la sesión: registra en bitácora, cierra conexión BD y limpia SessionManager.
+        /// Cierra la sesión: registra en bitácora y destruye la sesión Singleton.
         /// </summary>
         public void Logout(Form formulario)
         {
-            // Registrar ANTES de destruir la sesión (Registrar necesita el usuario activo)
-            bitacora.Registrar(formulario, "Cierre Sesion", BE.Criticidad.None);
+            bitacora.Registrar(formulario.Text, "Cierre Sesion", BE.Criticidad.None);
             usuarioDAL.Logout();
             SessionManager.Logout();
         }
 
         /// <summary>
-        /// Crea un nuevo usuario con su rol y contraseña hasheada.
-        /// Solo un Administrador puede ejecutar esta acción.
+        /// Crea un nuevo usuario con su rol y contraseña hasheada con PBKDF2-SHA256.
+        /// Solo un Administrador debería ejecutar esta acción.
         /// </summary>
-        /// <param name="username">Nombre de usuario único.</param>
-        /// <param name="contraseña">Contraseña en texto plano (será hasheada).</param>
-        /// <param name="perfil">Rol del empleado: "Administrador", "OperadorLogistico" o "Supervisor".</param>
-        public void Alta(string username, string contraseña, string perfil)
+        public void Alta(Form formulario, string username, string contraseña, string perfil)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(contraseña))
                 throw new Exception("Usuario y contraseña son obligatorios.");
@@ -92,6 +131,10 @@ namespace BLL
 
             string claveHasheada = Encriptador.Hash(contraseña);
             usuarioDAL.Alta(username, claveHasheada, perfil);
+
+            bitacora.Registrar(formulario.Text,
+                $"Alta Usuario: '{username}' [{perfil}]",
+                BE.Criticidad.Media);
         }
 
         /// <summary>
@@ -111,29 +154,50 @@ namespace BLL
 
             string claveHasheada = Encriptador.Hash(nuevaClave);
             usuarioDAL.ResetearClave(idUsuario, claveHasheada);
-            bitacora.Registrar(formulario, "Reset Contrasena", BE.Criticidad.Media);
+            bitacora.Registrar(formulario.Text, "Reset Contrasena", BE.Criticidad.RecuperacionClave);
         }
 
         /// <summary>
-        /// Retorna el usuario en sesión (con sus permisos) desde el SessionManager.
+        /// Desbloquea la cuenta de un usuario. Solo Administrador puede hacerlo.
+        /// También resetea el contador IntentosFallidos en BD.
         /// </summary>
+        /// <summary>
+        /// Desbloquea la cuenta de un usuario. Solo Administrador puede hacerlo.
+        /// También resetea el contador IntentosFallidos en BD.
+        /// </summary>
+        public void Desbloquear(Form formulario, int idUsuario, string usernameObjetivo)
+        {
+            if (!SessionManager.IsLoggedIn)
+                throw new Exception("No hay sesión activa.");
+
+            string perfil = SessionManager.GetInstance.Usuario.Perfil ?? "";
+            if (!perfil.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Solo un Administrador puede desbloquear cuentas.");
+
+            // Desbloquear en BD y resetear contador (ambos en un solo UPDATE en DAL)
+            usuarioDAL.Desbloquear(idUsuario);
+
+            bitacora.Registrar(formulario.Text,
+                $"Desbloqueo de Cuenta: '{usernameObjetivo}'",
+                BE.Criticidad.Alta);
+        }
+
+        /// <summary>Retorna el usuario en sesión (con sus permisos) desde el SessionManager.</summary>
         public BE.Usuario ObtenerUsuarioActivo()
         {
             if (!SessionManager.IsLoggedIn) return null;
             return SessionManager.GetInstance.Usuario;
         }
 
-        /// <summary>
-        /// Lista todos los usuarios del sistema (sin contraseñas).
-        /// </summary>
-        public System.Collections.Generic.List<BE.Usuario> ObtenerTodos()
+        /// <summary>Lista todos los usuarios del sistema (sin contraseñas).</summary>
+        public List<BE.Usuario> ObtenerTodos()
         {
             return usuarioDAL.ObtenerTodos();
         }
 
         /// <summary>
         /// Verifica si un username existe en la base de datos.
-        /// Registra en bitácora con criticidad RecuperacionClave (5).
+        /// Usado por el formulario de recuperación de contraseña.
         /// </summary>
         public bool ExisteUsername(string username)
         {
@@ -141,30 +205,49 @@ namespace BLL
             return usuarioDAL.ObtenerPorUsername(username) != null;
         }
 
-        /// <summary>
-        /// Registra un intento fallido de login en la bitácora (criticidad 4).
-        /// Llamado desde GUI.Login cuando las credenciales no coinciden.
-        /// </summary>
-        public void RegistrarIntentoFallido(Form formulario, string username)
+        // ── Helpers privados de bitácora de seguridad ─────────────────────────
+        // FIX: ahora reciben idUsuario (int?) para que aparezca en la columna
+        // "usuario" de la bitácora incluso antes de que haya sesión activa.
+
+        private void RegistrarIntentoFallidoInterno(string modulo, string username,
+                                                     int numeroIntento, int? idUsuario = null)
         {
-            // No hay sesión activa en este punto — usamos DAL.Bitacora directamente
-            // a través de un usuario de sistema con Id=0 (convención para eventos pre-sesión)
             try
             {
-                var dal = new DAL.Bitacora();
-                var registro = new BE.Bitacora
+                new DAL.Bitacora().Registrar(new BE.Bitacora
                 {
-                    Fecha      = System.DateTime.Now,
-                    IdUsuario  = null,  // null = evento pre-sesión (sin usuario autenticado)
-                    Modulo     = formulario?.Text ?? "Login",
+                    Fecha      = DateTime.Now,
+                    IdUsuario  = idUsuario,          // FIX: ahora incluye el ID del usuario
+                    Modulo     = modulo ?? "Login",
                     Actividad  = "Intento Fallido Login",
                     Criticidad = BE.Criticidad.IntentosLogin,
-                    Detalle    = $"Intento fallido de login para username '{username}' " +
-                                 $"a las {System.DateTime.Now:HH:mm:ss}."
-                };
-                dal.Registrar(registro);
+                    IP         = Servicios.Bitacora.ObtenerIPLocal(),
+                    Detalle    = $"Intento fallido #{numeroIntento}/{MaxIntentosFallidos} " +
+                                 $"para '{username}' (ID: {idUsuario?.ToString() ?? "?"}) " +
+                                 $"a las {DateTime.Now:HH:mm:ss}."
+                });
             }
             catch { /* No interrumpir el flujo de login por error de bitácora */ }
+        }
+
+        private void RegistrarBloqueo(string modulo, string username, int? idUsuario = null)
+        {
+            try
+            {
+                new DAL.Bitacora().Registrar(new BE.Bitacora
+                {
+                    Fecha      = DateTime.Now,
+                    IdUsuario  = idUsuario,          // FIX: incluye el ID del usuario
+                    Modulo     = modulo ?? "Login",
+                    Actividad  = "Bloqueo de Cuenta",
+                    Criticidad = BE.Criticidad.BloqueosCuenta,
+                    IP         = Servicios.Bitacora.ObtenerIPLocal(),
+                    Detalle    = $"Cuenta '{username}' (ID: {idUsuario?.ToString() ?? "?"}) " +
+                                 $"bloqueada automáticamente tras {MaxIntentosFallidos} " +
+                                 $"intentos fallidos consecutivos a las {DateTime.Now:HH:mm:ss}."
+                });
+            }
+            catch { }
         }
     }
 }

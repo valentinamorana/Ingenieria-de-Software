@@ -14,7 +14,7 @@ namespace DAL
     {
         private readonly Acceso acceso = Acceso.GetInstance();
 
-        /// <summary>Devuelve todos los empleados con su username (si tienen usuario).</summary>
+        // Devuelve todos los empleados con su username (si tienen usuario).
         public List<BE.Empleado> ObtenerTodos()
         {
             var lista = new List<BE.Empleado>();
@@ -39,7 +39,7 @@ namespace DAL
             return lista;
         }
 
-        /// <summary>Obtiene un empleado por ID.</summary>
+        // Obtiene un empleado por ID.
         public BE.Empleado ObtenerPorId(int idEmpleado)
         {
             SqlParameter[] p = { new SqlParameter("@IdEmpleado", idEmpleado) };
@@ -63,7 +63,7 @@ namespace DAL
             }
         }
 
-        /// <summary>Obtiene el empleado vinculado a un usuario del sistema.</summary>
+        // Obtiene el empleado vinculado a un usuario del sistema.
         public BE.Empleado ObtenerPorUsuario(int idUsuario)
         {
             SqlParameter[] p = { new SqlParameter("@IdUsuario", idUsuario) };
@@ -87,7 +87,7 @@ namespace DAL
             }
         }
 
-        /// <summary>Verifica si ya existe un empleado con ese DNI.</summary>
+        // Verifica si ya existe un empleado con ese DNI.
         public bool ExisteDNI(string dni)
         {
             SqlParameter[] p = { new SqlParameter("@DNI", dni) };
@@ -96,19 +96,19 @@ namespace DAL
             return tabla != null && tabla.Rows.Count > 0;
         }
 
-        /// <summary>Inserta un nuevo empleado. Devuelve el ID generado.</summary>
+        // Inserta un nuevo empleado. Devuelve el ID generado.
         public int Alta(BE.Empleado empleado)
         {
             SqlParameter[] p =
             {
-                new SqlParameter("@Nombre",       empleado.Nombre),
-                new SqlParameter("@Apellido",     empleado.Apellido),
-                new SqlParameter("@DNI",          empleado.DNI),
-                new SqlParameter("@Email",        (object)empleado.Email     ?? DBNull.Value),
+                new SqlParameter("@Nombre", empleado.Nombre),
+                new SqlParameter("@Apellido", empleado.Apellido),
+                new SqlParameter("@DNI", empleado.DNI),
+                new SqlParameter("@Email", (object)empleado.Email ?? DBNull.Value),
                 new SqlParameter("@FechaIngreso", empleado.FechaIngreso),
-                new SqlParameter("@Puesto",       (object)empleado.Puesto    ?? DBNull.Value),
-                new SqlParameter("@Legajo",       (object)empleado.Legajo    ?? DBNull.Value),
-                new SqlParameter("@IdUsuario",    (object)empleado.IdUsuario ?? DBNull.Value)
+                new SqlParameter("@Puesto", (object)empleado.Puesto ?? DBNull.Value),
+                new SqlParameter("@Legajo", (object)empleado.Legajo ?? DBNull.Value),
+                new SqlParameter("@IdUsuario", (object)empleado.IdUsuario ?? DBNull.Value)
             };
 
             DataTable tabla = acceso.Leer(
@@ -122,20 +122,20 @@ namespace DAL
                 : 0;
         }
 
-        /// <summary>Actualiza los datos de un empleado existente.</summary>
+        // Actualiza los datos de un empleado existente.
         public void Modificar(BE.Empleado empleado)
         {
             SqlParameter[] p =
             {
-                new SqlParameter("@Nombre",       empleado.Nombre),
-                new SqlParameter("@Apellido",     empleado.Apellido),
-                new SqlParameter("@DNI",          empleado.DNI),
-                new SqlParameter("@Email",        (object)empleado.Email     ?? DBNull.Value),
+                new SqlParameter("@Nombre", empleado.Nombre),
+                new SqlParameter("@Apellido", empleado.Apellido),
+                new SqlParameter("@DNI", empleado.DNI),
+                new SqlParameter("@Email", (object)empleado.Email ?? DBNull.Value),
                 new SqlParameter("@FechaIngreso", empleado.FechaIngreso),
-                new SqlParameter("@Puesto",       (object)empleado.Puesto    ?? DBNull.Value),
-                new SqlParameter("@Legajo",       (object)empleado.Legajo    ?? DBNull.Value),
-                new SqlParameter("@IdUsuario",    (object)empleado.IdUsuario ?? DBNull.Value),
-                new SqlParameter("@IdEmpleado",   empleado.IdEmpleado)
+                new SqlParameter("@Puesto", (object)empleado.Puesto ?? DBNull.Value),
+                new SqlParameter("@Legajo", (object)empleado.Legajo ?? DBNull.Value),
+                new SqlParameter("@IdUsuario", (object)empleado.IdUsuario ?? DBNull.Value),
+                new SqlParameter("@IdEmpleado", empleado.IdEmpleado)
             };
             acceso.Escribir(
                 "UPDATE Empleado SET Nombre=@Nombre, Apellido=@Apellido, DNI=@DNI, " +
@@ -144,22 +144,20 @@ namespace DAL
                 p);
         }
 
-        // ── Mapeo privado ────────────────────────────────────────────────────
-
         private BE.Empleado Mapear(DataRow row)
         {
             return new BE.Empleado
             {
-                IdEmpleado   = Convert.ToInt32(row["IdEmpleado"]),
-                Nombre       = row["Nombre"].ToString(),
-                Apellido     = row["Apellido"].ToString(),
-                DNI          = row["DNI"].ToString(),
-                Email        = row["Email"]     != DBNull.Value ? row["Email"].ToString()    : null,
+                IdEmpleado = Convert.ToInt32(row["IdEmpleado"]),
+                Nombre = row["Nombre"].ToString(),
+                Apellido = row["Apellido"].ToString(),
+                DNI = row["DNI"].ToString(),
+                Email = row["Email"] != DBNull.Value ? row["Email"].ToString() : null,
                 FechaIngreso = Convert.ToDateTime(row["FechaIngreso"]),
-                Puesto       = row["Puesto"]    != DBNull.Value ? row["Puesto"].ToString()   : null,
-                Legajo       = row["Legajo"]    != DBNull.Value ? row["Legajo"].ToString()   : null,
-                IdUsuario    = row["IdUsuario"] != DBNull.Value ? (int?)Convert.ToInt32(row["IdUsuario"]) : null,
-                Username     = row["Username"]  != DBNull.Value ? row["Username"].ToString() : null
+                Puesto = row["Puesto"] != DBNull.Value ? row["Puesto"].ToString() : null,
+                Legajo = row["Legajo"] != DBNull.Value ? row["Legajo"].ToString() : null,
+                IdUsuario = row["IdUsuario"] != DBNull.Value ? (int?)Convert.ToInt32(row["IdUsuario"]) : null,
+                Username = row["Username"] != DBNull.Value ? row["Username"].ToString() : null
             };
         }
     }

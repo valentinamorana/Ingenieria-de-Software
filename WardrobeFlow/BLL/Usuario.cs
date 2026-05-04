@@ -13,7 +13,8 @@ namespace BLL
         private readonly DAL.Permiso        permisoDAL = new DAL.Permiso();
         private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
 
-        private const int MaxIntentosFallidos = 3;
+        private const int    MaxIntentosFallidos = 3;
+        private const string RolAdministrador    = "Administrador";
 
         /// <summary>Autentica al usuario y establece la sesión. Bloquea la cuenta tras 3 intentos fallidos.</summary>
         public bool Login(Form formulario, string username, string contraseña)
@@ -82,6 +83,9 @@ namespace BLL
             if (string.IsNullOrWhiteSpace(perfil))
                 throw new Exception("El perfil/rol es obligatorio.");
 
+            var (valida, mensaje) = Encriptador.ValidarContrasena(contraseña);
+            if (!valida) throw new Exception(mensaje);
+
             string claveHasheada = Encriptador.Hash(contraseña);
             usuarioDAL.Alta(username, claveHasheada, perfil);
 
@@ -97,11 +101,11 @@ namespace BLL
                 throw new Exception("No hay sesión activa.");
 
             string perfil = SessionManager.GetInstance.Usuario.Perfil ?? "";
-            if (!perfil.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Solo un Administrador puede resetear contraseñas.");
 
-            if (string.IsNullOrWhiteSpace(nuevaClave) || nuevaClave.Length < 6)
-                throw new Exception("La nueva contraseña debe tener al menos 6 caracteres.");
+            var (valida, mensaje) = Encriptador.ValidarContrasena(nuevaClave);
+            if (!valida) throw new Exception(mensaje);
 
             string claveHasheada = Encriptador.Hash(nuevaClave);
             usuarioDAL.ResetearClave(idUsuario, claveHasheada);
@@ -123,7 +127,7 @@ namespace BLL
                 throw new Exception("No hay sesión activa.");
 
             string perfil = SessionManager.GetInstance.Usuario.Perfil ?? "";
-            if (!perfil.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Solo un Administrador puede desbloquear cuentas.");
 
             usuarioDAL.Desbloquear(idUsuario);
@@ -131,6 +135,32 @@ namespace BLL
             bitacora.Registrar(formulario.Text,
                 $"Desbloqueo de Cuenta: '{usernameObjetivo}'",
                 BE.Criticidad.Alta);
+        }
+
+        // Resetea la contraseña de TODOS los usuarios a una clave temporal. Solo Administrador.
+        public void ResetearTodasLasClaves(Form formulario, string claveTemporal)
+        {
+            if (!SessionManager.IsLoggedIn)
+                throw new Exception("No hay sesión activa.");
+
+            string perfil = SessionManager.GetInstance.Usuario.Perfil ?? "";
+            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Solo un Administrador puede realizar esta operación.");
+
+            var (valida, mensaje) = Encriptador.ValidarContrasena(claveTemporal);
+            if (!valida) throw new Exception(mensaje);
+
+            string hash = Encriptador.Hash(claveTemporal);
+            usuarioDAL.ResetearTodasLasClaves(hash);
+
+            var admin = SessionManager.GetInstance.Usuario;
+            bitacora.RegistrarSinSesion(
+                modulo:     formulario.Text,
+                actividad:  "Reset Masivo Contrasenas",
+                criticidad: BE.Criticidad.Alta,
+                idUsuario:  admin.Id,
+                detalle:    $"Admin '{admin.Username}' (ID: {admin.Id}) reseteo todas las contrasenas a clave temporal a las {DateTime.Now:HH:mm:ss}."
+            );
         }
 
         // Retorna el usuario en sesión (con sus permisos) desde el SessionManager.
@@ -151,6 +181,13 @@ namespace BLL
         {
             if (string.IsNullOrWhiteSpace(username)) return false;
             return usuarioDAL.ObtenerPorUsername(username) != null;
+        }
+
+        // Expone la validación de contraseña para que la GUI pueda dar feedback
+        // temprano sin acceder directamente a la capa Seguridad.
+        public (bool valida, string mensaje) ValidarContrasena(string contrasena)
+        {
+            return Encriptador.ValidarContrasena(contrasena);
         }
 
         // Registra un intento de login fallido en bitácora.

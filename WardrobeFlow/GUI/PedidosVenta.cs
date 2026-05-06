@@ -16,12 +16,11 @@ namespace GUI
     ///   ✓ Cancelar un pedido pendiente (libera prendas)
     ///   ✓ Ver detalle de prendas de cada pedido al seleccionarlo
     ///
-    /// Accesible desde Menú → Ventas → Pedidos de Venta (permiso mnuPedidosVenta).
-    /// </summary>
-    /// <summary>
     /// Hereda de <see cref="FormBase"/>:
     ///   - MostrarOk() y MostrarError() → heredados, no se redeclaran
     ///   - MensajeLabel → sobreescrito para devolver el lblMensaje de este formulario
+    ///
+    /// Accesible desde Menú → Ventas → Pedidos de Venta (permiso mnuPedidosVenta).
     /// </summary>
     public partial class PedidosVenta : FormBase, IIdiomaObserver
     {
@@ -31,9 +30,13 @@ namespace GUI
 
         private List<BE.Pedido> _pedidos = new List<BE.Pedido>();
 
+        // Idioma activo — se actualiza en Traducir() para usarlo en EstadoLabel() y ColorearFilasPedidos()
+        private Idioma _idioma = GestorIdioma.IdiomaActual;
+
         public PedidosVenta()
         {
             InitializeComponent();
+            AgregarBotonHistorial();
             this.Load += new EventHandler(PedidosVenta_Load);
         }
 
@@ -52,16 +55,22 @@ namespace GUI
             base.OnFormClosing(e);
         }
 
-        public void UpdateLanguage(Idioma idioma) => Traducir(idioma);
+        public void UpdateLanguage(Idioma idioma)
+        {
+            Traducir(idioma);
+            // Recargar la grilla para que EstadoLabel() y los headers usen el nuevo idioma
+            CargarPedidos();
+        }
 
         private void Traducir(Idioma idioma)
         {
+            _idioma = idioma;  // mantener sincronizado para EstadoLabel y ColorearFilasPedidos
             var t = Traductor.ObtenerTraducciones(idioma);
             if (this.Tag != null && t.ContainsKey(this.Tag.ToString()))
                 this.Text = t[this.Tag.ToString()].Texto;
-            Aplicar(btnNuevoPedido, t);
-            Aplicar(btnCancelar,    t);
-            Aplicar(btnDesCancelar, t);
+            Aplicar(btnNuevoPedido,   t);
+            Aplicar(btnCancelar,      t);
+            Aplicar(btnDesCancelar,   t);
             Aplicar(lblDetalleTitulo, t);
         }
 
@@ -100,6 +109,8 @@ namespace GUI
                 tabla.Columns.Add("Despacho",   typeof(string));
                 tabla.Columns.Add("Entrega",    typeof(string));
                 tabla.Columns.Add("Motivo",     typeof(string));
+                // Columna interna: int del enum para colorear sin depender del idioma activo
+                tabla.Columns.Add("_EstadoKey", typeof(int));
 
                 foreach (var p in _pedidos)
                 {
@@ -112,7 +123,8 @@ namespace GUI
                         EstadoLabel(p.Estado),
                         p.FechaDespacho.HasValue ? p.FechaDespacho.Value.ToString("dd/MM/yyyy") : "—",
                         p.FechaEntrega.HasValue  ? p.FechaEntrega.Value.ToString("dd/MM/yyyy")  : "—",
-                        p.MotivoCancelacion ?? "");
+                        p.MotivoCancelacion ?? "",
+                        (int)p.Estado);
                 }
 
                 dgvPedidos.DataSource = tabla;
@@ -121,9 +133,15 @@ namespace GUI
                 if (dgvPedidos.Columns.Contains("ID"))
                     dgvPedidos.Columns["ID"].Width = 44;
 
+                // Ocultar la columna interna y traducir headers
+                if (dgvPedidos.Columns.Contains("_EstadoKey"))
+                    dgvPedidos.Columns["_EstadoKey"].Visible = false;
+                TraducirHeadersGrilla();
+
                 lblConteo.Text = $"{_pedidos.Count} pedido(s)";
                 dgvDetallePrendas.DataSource = null;
-                lblDetalleTitulo.Text = "Prendas del pedido seleccionado";
+                // lblDetalleTitulo se traduce via Tag en Traducir(); no hardcodear aquí
+                Aplicar(lblDetalleTitulo, Traductor.ObtenerTraducciones(_idioma));
 
                 MostrarOk($"{_pedidos.Count} pedido(s) cargado(s).");
             }
@@ -137,16 +155,42 @@ namespace GUI
         {
             foreach (DataGridViewRow row in dgvPedidos.Rows)
             {
-                string estado = row.Cells["Estado"].Value?.ToString() ?? "";
-                row.DefaultCellStyle.ForeColor = estado switch
+                // Usar _EstadoKey (int del enum) en lugar del texto visible,
+                // así el coloreado funciona independientemente del idioma activo.
+                if (!dgvPedidos.Columns.Contains("_EstadoKey")) continue;
+                if (!int.TryParse(row.Cells["_EstadoKey"].Value?.ToString(), out int estadoKey)) continue;
+                row.DefaultCellStyle.ForeColor = estadoKey switch
                 {
-                    "Pendiente"  => Color.FromArgb(160, 100, 0),
-                    "Despachado" => Color.FromArgb(30, 100, 170),
-                    "Entregado"  => Color.FromArgb(30, 130, 30),
-                    "Cancelado"  => Color.FromArgb(160, 50, 50),
-                    _            => Color.Black
+                    (int)BE.EstadoPedido.Pendiente  => Color.FromArgb(160, 100, 0),
+                    (int)BE.EstadoPedido.Despachado => Color.FromArgb(30, 100, 170),
+                    (int)BE.EstadoPedido.Entregado  => Color.FromArgb(30, 130, 30),
+                    (int)BE.EstadoPedido.Cancelado  => Color.FromArgb(160, 50, 50),
+                    _                               => Color.Black
                 };
             }
+        }
+
+        /// <summary>
+        /// Renombra los HeaderText de las columnas de dgvPedidos según el idioma activo.
+        /// Los nombres internos del DataTable no cambian (se usan en ObtenerPedidoSeleccionado).
+        /// </summary>
+        private void TraducirHeadersGrilla()
+        {
+            var t = Traductor.ObtenerTraducciones(_idioma);
+
+            void RH(string col, string clave)
+            {
+                if (dgvPedidos.Columns.Contains(col) && t.ContainsKey(clave))
+                    dgvPedidos.Columns[col].HeaderText = t[clave].Texto;
+            }
+
+            RH("Fecha",    "col.ped.fecha");
+            RH("Cliente",  "col.ped.cliente");
+            RH("Vendedor", "col.ped.vendedor");
+            RH("Prendas",  "col.ped.prendas");
+            RH("Estado",   "col.ped.estado");
+            RH("Despacho", "col.ped.despacho");
+            RH("Entrega",  "col.ped.entrega");
         }
 
         private void DgvPedidos_SelectionChanged(object sender, EventArgs e)
@@ -158,6 +202,7 @@ namespace GUI
             {
                 btnCancelar.Enabled    = false;
                 btnDesCancelar.Enabled = false;
+                if (_btnHistorial != null) _btnHistorial.Enabled = false;
                 return;
             }
 
@@ -166,6 +211,7 @@ namespace GUI
 
             btnCancelar.Enabled    = pedido.Estado == BE.EstadoPedido.Pendiente;
             btnDesCancelar.Enabled = pedido.Estado == BE.EstadoPedido.Cancelado;
+            if (_btnHistorial != null) _btnHistorial.Enabled = true;
 
             // Cargar detalle de prendas del pedido seleccionado
             CargarDetallePrendas(pedido.IdPedido);
@@ -289,12 +335,13 @@ namespace GUI
 
         private string EstadoLabel(BE.EstadoPedido estado)
         {
+            var t = Traductor.ObtenerTraducciones(_idioma);
             switch (estado)
             {
-                case BE.EstadoPedido.Pendiente:  return "Pendiente";
-                case BE.EstadoPedido.Despachado: return "Despachado";
-                case BE.EstadoPedido.Entregado:  return "Entregado";
-                case BE.EstadoPedido.Cancelado:  return "Cancelado";
+                case BE.EstadoPedido.Pendiente:  return t.ContainsKey("est.pendiente")  ? t["est.pendiente"].Texto  : "Pendiente";
+                case BE.EstadoPedido.Despachado: return t.ContainsKey("est.despachado") ? t["est.despachado"].Texto : "Despachado";
+                case BE.EstadoPedido.Entregado:  return t.ContainsKey("est.entregado")  ? t["est.entregado"].Texto  : "Entregado";
+                case BE.EstadoPedido.Cancelado:  return t.ContainsKey("est.cancelado")  ? t["est.cancelado"].Texto  : "Cancelado";
                 default: return estado.ToString();
             }
         }
@@ -327,20 +374,20 @@ namespace GUI
 
                 var btnOk = new Button
                 {
-                    Text = "Aceptar", Left = 220, Top = 84,
+                    Text         = "Aceptar", Left = 220, Top = 84,
                     Width = 90, Height = 30,
                     DialogResult = DialogResult.OK,
-                    BackColor = Color.SteelBlue, ForeColor = Color.White,
-                    FlatStyle = FlatStyle.Flat
+                    BackColor    = Color.SteelBlue, ForeColor = Color.White,
+                    FlatStyle    = FlatStyle.Flat
                 };
                 btnOk.FlatAppearance.BorderSize = 0;
 
                 var btnCancel = new Button
                 {
-                    Text = "Cancelar", Left = 318, Top = 84,
+                    Text         = "Cancelar", Left = 318, Top = 84,
                     Width = 90, Height = 30,
                     DialogResult = DialogResult.Cancel,
-                    FlatStyle = FlatStyle.Flat
+                    FlatStyle    = FlatStyle.Flat
                 };
 
                 dlg.Controls.Add(btnOk);
@@ -354,5 +401,40 @@ namespace GUI
             return resultado;
         }
 
+        // ── Historial de cambios ──────────────────────────────────────────────
+
+        private Button _btnHistorial;
+
+        /// <summary>
+        /// Agrega el botón "📋 Historial" a panelTop en tiempo de ejecución
+        /// (el control no está en el Designer para no alterar el layout existente).
+        /// </summary>
+        private void AgregarBotonHistorial()
+        {
+            _btnHistorial = new Button
+            {
+                Text      = "📋 Historial",
+                Size      = new Size(110, 28),
+                BackColor = Color.FromArgb(60, 110, 160),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Cursor    = Cursors.Hand,
+                Enabled   = false
+            };
+            _btnHistorial.FlatAppearance.BorderSize = 0;
+            // Posicionar a la derecha de btnDesCancelar (Location.X = 274, Width = 130 → 274+130+6 = 410)
+            _btnHistorial.Location = new Point(412, 11);
+            _btnHistorial.Click   += BtnHistorial_Click;
+            panelTop.Controls.Add(_btnHistorial);
+        }
+
+        private void BtnHistorial_Click(object sender, EventArgs e)
+        {
+            var pedido = ObtenerPedidoSeleccionado();
+            if (pedido == null) return;
+
+            using (var frm = new PedidoHistorialForm(pedido.IdPedido))
+                frm.ShowDialog(this);
+        }
     }
 }

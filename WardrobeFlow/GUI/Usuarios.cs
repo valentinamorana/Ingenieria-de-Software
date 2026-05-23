@@ -138,6 +138,22 @@ namespace GUI
             btnResetMasivo.Click += BtnResetMasivo_Click;
             panelAlta.Controls.Add(btnResetMasivo);
 
+            // Botón recalcular DV — T07: regenera DVH y DVV para todas las filas de Usuario
+            var btnRecalcularDV = new Button
+            {
+                Text      = "Recalcular integridad (DV)",
+                Size      = new Size(216, 30),
+                Location  = new Point(12, btnResetMasivo.Bottom + 8),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(40, 80, 140),
+                ForeColor = Color.White,
+                Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Cursor    = Cursors.Hand
+            };
+            btnRecalcularDV.FlatAppearance.BorderSize = 0;
+            btnRecalcularDV.Click += BtnRecalcularDV_Click;
+            panelAlta.Controls.Add(btnRecalcularDV);
+
             // Ojito mostrar/ocultar contraseña — se posiciona a la derecha del textbox
             // una vez que el layout ya tiene las medidas escaladas.
             txtContraseña.Width -= 28;
@@ -245,55 +261,16 @@ namespace GUI
 
         // ── Eventos de botones ────────────────────────────────────────────────
 
-        /// <summary>
-        /// Crea un nuevo usuario tras validar que el username sea numérico (DNI)
-        /// y que la contraseña tenga al menos 6 caracteres.
-        /// </summary>
+        /// <summary>Crea un nuevo usuario. Las validaciones se delegan a BLL.Usuario.Alta().</summary>
         private void BtnAgregar_Click(object sender, EventArgs e)
         {
             string username  = txtUsername.Text.Trim();
             string password  = txtContraseña.Text;
             string perfil    = cmbPerfil.SelectedItem?.ToString() ?? "";
 
-            var tVal = Traductor.ObtenerTraducciones(_idioma);
-            string T_v(string k, string fb) => tVal.ContainsKey(k) ? tVal[k].Texto : fb;
-
-            // Validaciones de UI antes de llamar a BLL
-            if (string.IsNullOrWhiteSpace(username))
-            {
-                MostrarError(T_v("err.usr.nombre.req", "El nombre de usuario es obligatorio."));
-                return;
-            }
-
-            if (username.Length < 3)
-            {
-                MostrarError(T_v("err.usr.nombre.longitud", "El nombre de usuario debe tener al menos 3 caracteres."));
-                txtUsername.Focus();
-                return;
-            }
-
-            var resultado = usuarioBLL.ValidarContrasena(password);
-            if (!resultado.valida)
-            {
-                MostrarError(resultado.mensaje);
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(perfil))
-            {
-                var tPR = Traductor.ObtenerTraducciones(_idioma);
-                MostrarError(tPR.ContainsKey("err.usr.sinperfil") ? tPR["err.usr.sinperfil"].Texto : "Seleccioná un perfil/rol.");
-                return;
-            }
-
-            // Mapear nombre visible → código interno que usa RolPermiso en la BD
-            string perfilInterno = perfil;
-            if (perfil == "Controlador de Stock")    perfilInterno = "ControladorDeStock";
-            if (perfil == "Operador de Inventario")  perfilInterno = "OperadorDeInventario";
-
             try
             {
-                usuarioBLL.Alta(this, username, password, perfilInterno);
+                usuarioBLL.Alta(this, username, password, perfil);
 
                 // Limpiar campos y refrescar lista
                 txtUsername.Clear();
@@ -383,6 +360,21 @@ namespace GUI
             catch (Exception ex)
             {
                 MostrarError(ex.Message);
+            }
+        }
+
+        // ── Recalcular integridad DV ──────────────────────────────────────────
+
+        private void BtnRecalcularDV_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                BLL.Configuracion.RecalcularIntegridadDV();
+                MostrarOk("DVH y DVV recalculados correctamente para todos los usuarios.");
+            }
+            catch (Exception ex)
+            {
+                MostrarError($"Error al recalcular DV: {ex.Message}");
             }
         }
 

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Forms;
 
 namespace BLL
 {
@@ -17,33 +16,27 @@ namespace BLL
     {
         /// <summary>
         /// Verifica la conexión a SQL Server usando DAL.Acceso.VerificarConexion().
-        /// Si falla, muestra un mensaje de error y termina el proceso.
+        /// Retorna false y un mensaje de error si la conexión falla.
         /// Se invoca desde Program.Main() antes de mostrar cualquier formulario.
         /// </summary>
-        public static void VerificarConexionDAL()
+        public static bool VerificarConexionDAL(out string mensajeError)
         {
+            mensajeError = null;
             try
             {
                 bool ok = DAL.Acceso.GetInstance().VerificarConexion();
 
                 if (!ok)
                 {
-                    MessageBox.Show(
-                        "No se pudo conectar a la base de datos.\nVerifique que SQL Server esté en ejecución.",
-                        "Error de Conexión",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-                    Environment.Exit(1);
+                    mensajeError = "No se pudo conectar a la base de datos.\nVerifique que SQL Server esté en ejecución.";
+                    return false;
                 }
+                return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"Error al inicializar la conexión:\n{ex.Message}\n\nVerifique la cadena de conexión en App.config.",
-                    "Error de Conexión",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                Environment.Exit(1);
+                mensajeError = $"Error al inicializar la conexión:\n{ex.Message}\n\nVerifique la cadena de conexión en App.config.";
+                return false;
             }
         }
 
@@ -60,12 +53,13 @@ namespace BLL
         ///
         /// Retorna true si la integridad es correcta.
         /// </summary>
-        public static bool VerificarIntegridadDV()
+        public static bool VerificarIntegridadDV(out string mensajeError)
         {
+            mensajeError = null;
             try
             {
                 var dvDAL = new DAL.DigitoVerificador();
-                var svc   = new Servicios.DigitoVerificador();
+                var svc   = new Seguridad.DigitoVerificador();
                 var filas = dvDAL.ObtenerFilasUsuario();
 
                 if (filas.Count == 0) return true;  // tabla vacía — sin datos que verificar
@@ -135,12 +129,7 @@ namespace BLL
                 sb.AppendLine("  2. Corregir los valores afectados manualmente.");
                 sb.AppendLine("  3. Ejecutar el recálculo de DVH/DVV desde Administrar → Usuarios.");
 
-                MessageBox.Show(
-                    sb.ToString(),
-                    "Integridad comprometida — Acceso bloqueado",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
+                mensajeError = sb.ToString();
                 return false;
             }
             catch (Exception ex)
@@ -149,12 +138,9 @@ namespace BLL
                 if (ex.Message.Contains("DVH") || ex.InnerException?.Message.Contains("DVH") == true)
                     return true;
 
-                MessageBox.Show(
-                    $"Error al verificar integridad DV:\n{ex.Message}",
-                    "Error de Integridad",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                return true;  // Error en el check: no bloquear (puede ser primer arranque)
+                // Error en el check: no bloquear (puede ser primer arranque), pero informar
+                mensajeError = $"Advertencia al verificar integridad DV:\n{ex.Message}";
+                return true;
             }
         }
 
@@ -163,14 +149,14 @@ namespace BLL
         public static void RecalcularIntegridadDV()
         {
             var dvDAL = new DAL.DigitoVerificador();
-            var svc   = new Servicios.DigitoVerificador();
+            var svc   = new Seguridad.DigitoVerificador();
             var filas = dvDAL.ObtenerFilasUsuario();
             RecalcularTodoDV(dvDAL, svc, filas);
         }
 
         // Helper compartido entre VerificarIntegridadDV (primer arranque) y RecalcularIntegridadDV.
         private static void RecalcularTodoDV(DAL.DigitoVerificador dvDAL,
-                                              Servicios.DigitoVerificador svc,
+                                              Seguridad.DigitoVerificador svc,
                                               List<DAL.FilaUsuarioDV> filas)
         {
             var dvhValues = new List<int>();

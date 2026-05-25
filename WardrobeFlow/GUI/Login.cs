@@ -1,6 +1,7 @@
 using BLL;
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using Servicios.Multiidioma;
 
@@ -33,6 +34,19 @@ namespace GUI
         {
             InitializeComponent();
 
+            pnlLeft.BackgroundImage       = CrearTexturaPanelIzquierdo();
+            pnlLeft.BackgroundImageLayout = ImageLayout.None;
+            // DoubleBuffered en pnlCard: garantiza que los labels Transparent
+            // muestren el BackgroundImage en lugar del BackColor sólido.
+            typeof(System.Windows.Forms.Control)
+                .GetProperty("DoubleBuffered",
+                    System.Reflection.BindingFlags.NonPublic |
+                    System.Reflection.BindingFlags.Instance)
+                ?.SetValue(pnlCard, true, null);
+
+            pnlCard.BackgroundImage       = CrearTexturaPanelDerecho();
+            pnlCard.BackgroundImageLayout = ImageLayout.Stretch;
+
             // Permitir presionar Enter para ingresar (UX de empleados)
             this.AcceptButton = btnIngresar;
 
@@ -62,7 +76,19 @@ namespace GUI
             btnOjo.FlatAppearance.BorderSize = 1;
             btnOjo.FlatAppearance.BorderColor = Color.FromArgb(180, 180, 180);
             btnOjo.Click += (s, e) =>
-                txtContraseña.PasswordChar = txtContraseña.PasswordChar == '\0' ? '●' : '\0';
+            {
+                var b = (Button)s;
+                if (txtContraseña.PasswordChar == '\0')
+                {
+                    txtContraseña.PasswordChar = '●';
+                    b.Font = new Font("Segoe UI Emoji", 9f);
+                }
+                else
+                {
+                    txtContraseña.PasswordChar = '\0';
+                    b.Font = new Font("Segoe UI Emoji", 9f, FontStyle.Strikeout);
+                }
+            };
             pnlCard.Controls.Add(btnOjo);
             btnOjo.BringToFront();
 
@@ -195,6 +221,9 @@ namespace GUI
             // Subtítulo "PORTAL DE EMPLEADOS" — traducción directa por clave fija
             if (t.ContainsKey("lbl.subtitulo"))
                 lblSubtitulo.Text = t["lbl.subtitulo"].Texto;
+
+            if (lblAccent.Tag != null && t.ContainsKey(lblAccent.Tag.ToString()))
+                lblAccent.Text = t[lblAccent.Tag.ToString()].Texto;
         }
 
         // ── Eventos de negocio ────────────────────────────────────────────────
@@ -210,60 +239,114 @@ namespace GUI
             try
             {
                 bool esValido = usuarioBLL.Login(this.Text, txtUsuario.Text, txtContraseña.Text);
-
                 if (esValido)
                 {
-                    // Login exitoso → el formulario desaparece y Program.Main() abre el Menú
                     this.DialogResult = DialogResult.OK;
                     this.Close();
                 }
-                // No hay else: credenciales inválidas y bloqueos son manejados
-                // por excepciones en BLL.Usuario.Login() → caen al catch de abajo
             }
-            catch (Exception ex)
+            catch (BE.LoginException ex) when (ex.Tipo == BE.LoginException.TipoError.LimiteAlcanzado)
             {
-                bool bloqueado = ex.Message.Contains("bloqueada");
+                MessageBox.Show(ex.Message + "\n\nLa aplicación se cerrará.",
+                    "Sesión terminada", MessageBoxButtons.OK, MessageBoxIcon.Stop);
+                Application.Exit();
+            }
+            catch (BE.LoginException ex) when (ex.Tipo == BE.LoginException.TipoError.CuentaBloqueada)
+            {
+                MostrarErrorLogin(ex.Message, bloqueado: true);
+            }
+            catch (BE.LoginException ex)
+            {
+                MostrarErrorLogin(ex.Message, bloqueado: false);
+            }
+        }
 
-                lblError.Text      = ex.Message;
-                lblError.ForeColor = bloqueado
-                    ? Color.FromArgb(140, 0, 0)
-                    : Color.FromArgb(180, 50, 50);
+        private void MostrarErrorLogin(string mensaje, bool bloqueado)
+        {
+            lblError.Text      = mensaje;
+            lblError.ForeColor = bloqueado
+                ? Color.FromArgb(140, 0, 0)
+                : Color.FromArgb(180, 50, 50);
 
-                // Expandir el card dinámicamente solo si el mensaje necesita más espacio
-                // (mensajes de bloqueo son multi-línea). Calculamos cuánto espacio extra
-                // requiere el texto y desplazamos los controles de abajo.
-                using (var g = lblError.CreateGraphics())
+            // Expandir el card si el mensaje necesita más espacio (bloqueos son multi-línea).
+            using (var g = lblError.CreateGraphics())
+            {
+                var tamano      = g.MeasureString(lblError.Text, lblError.Font, lblError.Width);
+                int diferencia  = Math.Max(0, (int)tamano.Height + 4 - lblError.Height);
+                if (diferencia > 0)
                 {
-                    var tamano = g.MeasureString(lblError.Text, lblError.Font,
-                                                 lblError.Width);
-                    int alturaTexto  = (int)tamano.Height + 4;
-                    int alturaActual = lblError.Height;
-                    int diferencia   = Math.Max(0, alturaTexto - alturaActual);
-
-                    if (diferencia > 0)
-                    {
-                        lblError.Height       += diferencia;
-                        btnIngresar.Top       += diferencia;
-                        lnkOlvidaste.Top      += diferencia;
-                        btnSalir.Top          += diferencia;
-                        pnlCard.Height        += diferencia;
-                    }
-                }
-
-                if (bloqueado)
-                {
-                    // Cuenta bloqueada: deshabilitar todo para que no siga intentando
-                    txtUsuario.Enabled    = false;
-                    txtContraseña.Enabled = false;
-                    btnIngresar.Enabled   = false;
-                    this.AcceptButton     = null;
-                }
-                else
-                {
-                    txtContraseña.Clear();
-                    txtContraseña.Focus();
+                    lblError.Height  += diferencia;
+                    btnIngresar.Top  += diferencia;
+                    lnkOlvidaste.Top += diferencia;
+                    btnSalir.Top     += diferencia;
+                    pnlCard.Height   += diferencia;
                 }
             }
+
+            if (bloqueado)
+            {
+                txtUsuario.Enabled    = false;
+                txtContraseña.Enabled = false;
+                btnIngresar.Enabled   = false;
+                this.AcceptButton     = null;
+            }
+            else
+            {
+                txtContraseña.Clear();
+                txtContraseña.Focus();
+            }
+        }
+
+        private Bitmap CrearTexturaPanelDerecho()
+        {
+            int w = pnlCard.Width  > 0 ? pnlCard.Width  : 455;
+            int h = pnlCard.Height > 0 ? pnlCard.Height : 420;
+            var bmp = new Bitmap(w, h);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                // Gradiente vertical: lavanda suave arriba → blanco abajo
+                using (var grad = new LinearGradientBrush(
+                    new Point(0, 0), new Point(0, h),
+                    Color.FromArgb(238, 228, 248),   // lavanda claro
+                    Color.FromArgb(255, 255, 255)))  // blanco
+                {
+                    g.FillRectangle(grad, 0, 0, w, h);
+                }
+                // Puntos sutiles superpuestos al gradiente
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var dot = new SolidBrush(Color.FromArgb(40, 146, 62, 96)))
+                {
+                    const int spacing = 28;
+                    for (int x = spacing; x < w; x += spacing)
+                        for (int y = spacing; y < h; y += spacing)
+                            g.FillEllipse(dot, x - 1, y - 1, 3, 3);
+                }
+            }
+            return bmp;
+        }
+
+        private Bitmap CrearTexturaPanelIzquierdo()
+        {
+            int w = pnlLeft.Width > 0 ? pnlLeft.Width : 265;
+            int h = pnlLeft.Height > 0 ? pnlLeft.Height : 420;
+            var bmp = new Bitmap(w, h);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.FromArgb(146, 62, 96));
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var b1 = new SolidBrush(Color.FromArgb(30, 255, 255, 255)))
+                {
+                    g.FillEllipse(b1, 100, -80, 230, 230);   // top-right
+                    g.FillEllipse(b1, -60, 245, 200, 200);   // bottom-left
+                    g.FillEllipse(b1, 115, 265, 180, 180);   // bottom-right
+                }
+                using (var b2 = new SolidBrush(Color.FromArgb(18, 255, 255, 255)))
+                {
+                    g.FillEllipse(b2, -50,  5, 170, 170);    // top-left
+                    g.FillEllipse(b2,  35, 115, 185, 185);   // center
+                }
+            }
+            return bmp;
         }
 
         /// <summary>

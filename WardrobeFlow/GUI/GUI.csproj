@@ -47,6 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DashboardForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormBase.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -116,11 +119,35 @@
     <Compile Include="Bitacora.Designer.cs">
       <DependentUpon>Bitacora.cs</DependentUpon>
     </Compile>
+    <Compile Include="BackupForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="BackupForm.Designer.cs">
+      <DependentUpon>BackupForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ConfirmarAdminForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConfirmarAdminForm.Designer.cs">
+      <DependentUpon>ConfirmarAdminForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RestauracionForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="RestauracionForm.Designer.cs">
+      <DependentUpon>RestauracionForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="OlvideContrasenaForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="OlvideContrasenaForm.Designer.cs">
       <DependentUpon>OlvideContrasenaForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="VersionHistorialForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="VersionHistorialForm.Designer.cs">
+      <DependentUpon>VersionHistorialForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Prendas.cs">
       <SubType>Form</SubType>
@@ -168,6 +195,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="ClienteForm.resx">
       <DependentUpon>ClienteForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="FormBase.resx">
+      <DependentUpon>FormBase.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Login.resx">
       <DependentUpon>Login.cs</DependentUpon>

@@ -1,4 +1,7 @@
+using Servicios.Multiidioma;
+using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace GUI
@@ -30,6 +33,18 @@ namespace GUI
     /// </summary>
     public class FormBase : Form
     {
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            try
+            {
+                string ico = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
+                if (File.Exists(ico))
+                    this.Icon = new Icon(ico);
+            }
+            catch { }
+        }
+
         /// <summary>
         /// Label donde se muestra el feedback al usuario.
         /// Cada formulario hijo sobreescribe esta propiedad devolviendo
@@ -63,8 +78,9 @@ namespace GUI
         {
             if (MensajeLabel == null)
             {
-                MessageBox.Show($"Error: {msg}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string titulo = t.ContainsKey("msg.error.titulo") ? t["msg.error.titulo"].Texto : "Error";
+                MessageBox.Show(msg, titulo, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             MensajeLabel.ForeColor = Color.DarkRed;

@@ -216,6 +216,12 @@ namespace BLL
                     $"El cliente {cliente.NombreCompleto} no tiene plan asignado.\n" +
                     "Asignale un plan antes de crear un pedido.");
 
+            if (!cliente.SuscripcionVigente())
+                throw new Exception(
+                    $"La suscripción de {cliente.NombreCompleto} venció el " +
+                    $"{cliente.FechaVencimiento.Value:dd/MM/yyyy}.\n" +
+                    "Renovar la fecha de vencimiento en el módulo de Clientes.");
+
             return cliente;
         }
 
@@ -337,6 +343,37 @@ namespace BLL
             }).ToList();
 
             dalHistorial.RegistrarCambios(registros);
+        }
+
+        /// <summary>
+        /// Calcula el nivel de urgencia de un pedido según el tiempo transcurrido.
+        /// Pendiente: Urgente > 3 días, Normal 1-3 días, Reciente &lt; 1 día.
+        /// Despachado: Urgente > 5 días, Normal 2-5 días, Reciente &lt; 2 días.
+        /// </summary>
+        public BE.NivelUrgencia CalcularNivelUrgencia(BE.Pedido p)
+        {
+            if (p.Estado == BE.EstadoPedido.Entregado || p.Estado == BE.EstadoPedido.Cancelado)
+                return BE.NivelUrgencia.NoAplica;
+
+            double dias = (DateTime.Now - p.FechaPedido).TotalDays;
+
+            if (p.Estado == BE.EstadoPedido.Pendiente)
+            {
+                if (dias > 3) return BE.NivelUrgencia.Urgente;
+                if (dias > 1) return BE.NivelUrgencia.Normal;
+                return BE.NivelUrgencia.Reciente;
+            }
+
+            if (p.Estado == BE.EstadoPedido.Despachado)
+            {
+                double diasDespacho = p.FechaDespacho.HasValue
+                    ? (DateTime.Now - p.FechaDespacho.Value).TotalDays : dias;
+                if (diasDespacho > 5) return BE.NivelUrgencia.Urgente;
+                if (diasDespacho > 2) return BE.NivelUrgencia.Normal;
+                return BE.NivelUrgencia.Reciente;
+            }
+
+            return BE.NivelUrgencia.NoAplica;
         }
 
         /// <summary>Devuelve el historial de cambios de un pedido con filtros opcionales.</summary>

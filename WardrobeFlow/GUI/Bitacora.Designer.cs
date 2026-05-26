@@ -19,6 +19,9 @@ namespace GUI
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
+            this.panelTop       = new System.Windows.Forms.Panel();
+            this.lblBitTitulo   = new System.Windows.Forms.Label();
+            this.lblBitSubtitulo = new System.Windows.Forms.Label();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabPageSistema = new System.Windows.Forms.TabPage();
             this.dgvSistema = new System.Windows.Forms.DataGridView();
@@ -54,6 +57,7 @@ namespace GUI
             this.btnNegBuscar = new System.Windows.Forms.Button();
             this.btnNegLimpiar = new System.Windows.Forms.Button();
             this.btnExportNegocio = new System.Windows.Forms.Button();
+            this.panelTop.SuspendLayout();
             this.tabControl.SuspendLayout();
             this.tabPageSistema.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgvSistema)).BeginInit();
@@ -64,9 +68,42 @@ namespace GUI
             this.panelFiltrosNegocio.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nudNegDias)).BeginInit();
             this.SuspendLayout();
-            // 
+            //
+            // panelTop
+            //
+            this.panelTop.BackColor = System.Drawing.Color.FromArgb(146, 62, 96);
+            this.panelTop.Controls.Add(this.lblBitTitulo);
+            this.panelTop.Controls.Add(this.lblBitSubtitulo);
+            this.panelTop.Dock = System.Windows.Forms.DockStyle.Top;
+            this.panelTop.Location = new System.Drawing.Point(0, 0);
+            this.panelTop.Name = "panelTop";
+            this.panelTop.Size = new System.Drawing.Size(1020, 56);
+            this.panelTop.TabIndex = 1;
+            //
+            // lblBitTitulo
+            //
+            this.lblBitTitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblBitTitulo.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
+            this.lblBitTitulo.ForeColor = System.Drawing.Color.White;
+            this.lblBitTitulo.Location = new System.Drawing.Point(12, 6);
+            this.lblBitTitulo.Name = "lblBitTitulo";
+            this.lblBitTitulo.Size = new System.Drawing.Size(700, 26);
+            this.lblBitTitulo.TabIndex = 0;
+            this.lblBitTitulo.Text = "Auditoría — Bitácoras";
+            //
+            // lblBitSubtitulo
+            //
+            this.lblBitSubtitulo.BackColor = System.Drawing.Color.Transparent;
+            this.lblBitSubtitulo.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Italic);
+            this.lblBitSubtitulo.ForeColor = System.Drawing.Color.FromArgb(255, 200, 218);
+            this.lblBitSubtitulo.Location = new System.Drawing.Point(12, 34);
+            this.lblBitSubtitulo.Name = "lblBitSubtitulo";
+            this.lblBitSubtitulo.Size = new System.Drawing.Size(900, 16);
+            this.lblBitSubtitulo.TabIndex = 1;
+            this.lblBitSubtitulo.Text = "Registro de eventos del sistema y operaciones de negocio";
+            //
             // tabControl
-            // 
+            //
             this.tabControl.Controls.Add(this.tabPageSistema);
             this.tabControl.Controls.Add(this.tabPageNegocio);
             this.tabControl.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -91,7 +128,7 @@ namespace GUI
             // 
             this.dgvSistema.AllowUserToAddRows = false;
             this.dgvSistema.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(248)))), ((int)(((byte)(255)))));
+            dataGridViewCellStyle1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(248)))), ((int)(((byte)(252)))));
             this.dgvSistema.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             this.dgvSistema.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dgvSistema.BackgroundColor = System.Drawing.Color.White;
@@ -116,7 +153,7 @@ namespace GUI
             // 
             // lblResultadosSistema
             // 
-            this.lblResultadosSistema.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(230)))), ((int)(((byte)(240)))));
+            this.lblResultadosSistema.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(220)))), ((int)(((byte)(228)))));
             this.lblResultadosSistema.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblResultadosSistema.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this.lblResultadosSistema.Location = new System.Drawing.Point(0, 570);
@@ -128,7 +165,7 @@ namespace GUI
             // 
             // panelFiltrosSistema
             // 
-            this.panelFiltrosSistema.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.panelFiltrosSistema.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(220)))), ((int)(((byte)(230)))));
             this.panelFiltrosSistema.Controls.Add(this.lblUltimosSistema);
             this.panelFiltrosSistema.Controls.Add(this.nudDias);
             this.panelFiltrosSistema.Controls.Add(this.lblDiasSistema);
@@ -316,7 +353,7 @@ namespace GUI
             // 
             this.dgvNegocio.AllowUserToAddRows = false;
             this.dgvNegocio.AllowUserToDeleteRows = false;
-            dataGridViewCellStyle3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(248)))), ((int)(((byte)(255)))));
+            dataGridViewCellStyle3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(248)))), ((int)(((byte)(252)))));
             this.dgvNegocio.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle3;
             this.dgvNegocio.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dgvNegocio.BackgroundColor = System.Drawing.Color.White;
@@ -340,18 +377,19 @@ namespace GUI
             // 
             // lblResultadosNegocio
             // 
-            this.lblResultadosNegocio.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(220)))), ((int)(((byte)(235)))), ((int)(((byte)(220)))));
+            this.lblResultadosNegocio.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(220)))), ((int)(((byte)(228)))));
             this.lblResultadosNegocio.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.lblResultadosNegocio.Location = new System.Drawing.Point(0, 590);
+            this.lblResultadosNegocio.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.lblResultadosNegocio.Location = new System.Drawing.Point(0, 570);
             this.lblResultadosNegocio.Name = "lblResultadosNegocio";
-            this.lblResultadosNegocio.Padding = new System.Windows.Forms.Padding(4, 0, 0, 0);
-            this.lblResultadosNegocio.Size = new System.Drawing.Size(1012, 24);
+            this.lblResultadosNegocio.Padding = new System.Windows.Forms.Padding(6, 2, 0, 2);
+            this.lblResultadosNegocio.Size = new System.Drawing.Size(1012, 44);
             this.lblResultadosNegocio.TabIndex = 2;
             this.lblResultadosNegocio.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // panelFiltrosNegocio
             // 
-            this.panelFiltrosNegocio.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(238)))), ((int)(((byte)(245)))), ((int)(((byte)(238)))));
+            this.panelFiltrosNegocio.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(220)))), ((int)(((byte)(230)))));
             this.panelFiltrosNegocio.Controls.Add(this.lblUltimosNegocio);
             this.panelFiltrosNegocio.Controls.Add(this.nudNegDias);
             this.panelFiltrosNegocio.Controls.Add(this.lblDiasNegocio);
@@ -532,13 +570,16 @@ namespace GUI
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1020, 640);
+            this.BackColor = System.Drawing.Color.FromArgb(250, 240, 246);
+            this.ClientSize = new System.Drawing.Size(1020, 696);
             this.Controls.Add(this.tabControl);
-            this.MinimumSize = new System.Drawing.Size(860, 540);
+            this.Controls.Add(this.panelTop);
+            this.MinimumSize = new System.Drawing.Size(860, 580);
             this.Name = "Bitacora";
             this.Tag = "frm.bitacora";
             this.Text = "Auditoría — Bitácoras del Sistema";
             this.Load += new System.EventHandler(this.Bitacora_Load);
+            this.panelTop.ResumeLayout(false);
             this.tabControl.ResumeLayout(false);
             this.tabPageSistema.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dgvSistema)).EndInit();
@@ -556,6 +597,9 @@ namespace GUI
 
         #endregion
 
+        private System.Windows.Forms.Panel         panelTop;
+        private System.Windows.Forms.Label         lblBitTitulo;
+        private System.Windows.Forms.Label         lblBitSubtitulo;
         private System.Windows.Forms.TabControl    tabControl;
         private System.Windows.Forms.TabPage       tabPageSistema;
         private System.Windows.Forms.Panel         panelFiltrosSistema;

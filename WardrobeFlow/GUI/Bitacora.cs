@@ -43,9 +43,21 @@ namespace GUI
         private Font        _fuenteCelda;
         private Font        _fuenteTitulo;
 
-        public Bitacora()
+        private readonly string _tabInicial;
+        private Panel _leyendaCriticidad;
+
+        public Bitacora(string tabInicial = null)
         {
             InitializeComponent();
+            _tabInicial = tabInicial;
+        }
+
+        public void SeleccionarTab(string nombre)
+        {
+            if (nombre == "negocio" && tabControl.TabPages.Contains(tabPageNegocio))
+                tabControl.SelectedTab = tabPageNegocio;
+            else if (nombre == "sistema" && tabControl.TabPages.Contains(tabPageSistema))
+                tabControl.SelectedTab = tabPageSistema;
         }
 
         // ── Observer de idioma ────────────────────────────────────────────────
@@ -55,6 +67,129 @@ namespace GUI
             base.OnLoad(e);
             GestorIdioma.SuscribirObservador(this);
             Traducir(GestorIdioma.IdiomaActual);  // calls RellenarComboCriticidad internally
+            InicializarDisenoMockup();
+        }
+
+        private void InicializarDisenoMockup()
+        {
+            // ── Gradient en panelTop ──────────────────────────────────────────
+            panelTop.Paint += (s, pe) =>
+            {
+                using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    panelTop.ClientRectangle,
+                    Color.FromArgb(176, 62, 96),
+                    Color.FromArgb(242, 114, 153),
+                    System.Drawing.Drawing2D.LinearGradientMode.Horizontal))
+                    pe.Graphics.FillRectangle(br, panelTop.ClientRectangle);
+            };
+            panelTop.Invalidate();
+
+            // ── Colores de headers DGV ────────────────────────────────────────
+            foreach (var dgv in new[] { dgvSistema, dgvNegocio })
+            {
+                dgv.EnableHeadersVisualStyles = false;
+                dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(176, 62, 96);
+                dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+                dgv.ColumnHeadersDefaultCellStyle.Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+                dgv.GridColor = Color.FromArgb(230, 210, 220);
+            }
+
+            // ── Leyenda de criticidad en tab Sistema ──────────────────────────
+            var leyenda = new Panel
+            {
+                Dock      = DockStyle.Top,
+                Height    = 28,
+                BackColor = Color.FromArgb(245, 238, 242)
+            };
+            leyenda.Paint += (s, pe) =>
+            {
+                var g = pe.Graphics;
+                int x = 10;
+                var tr = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string Tl(string key, string fb) => tr.ContainsKey(key) ? tr[key].Texto : fb;
+                // (trad-key, fallback, back, fore)
+                var niveles = new (string key, string fb, Color back, Color fore)[]
+                {
+                    ("stat.ninguno",    "Ninguno",     Color.FromArgb(245,245,245), Color.Gray),
+                    ("stat.baja",       "Baja",        Color.FromArgb(220,255,220), Color.DarkGreen),
+                    ("stat.media",      "Media",       Color.FromArgb(255,255,200), Color.DarkGoldenrod),
+                    ("stat.alta",       "Alta",        Color.FromArgb(255,220,170), Color.DarkOrange),
+                    ("stat.intlogin",   "Int.Login",   Color.FromArgb(255,205,205), Color.DarkRed),
+                    ("stat.recupclave", "Recup.Clave", Color.FromArgb(210,225,255), Color.DarkBlue),
+                    ("stat.bloqueos",   "Bloqueos",    Color.FromArgb(200,0,20),    Color.White),
+                };
+                using (var fnt = new Font("Segoe UI", 7.5f))
+                {
+                    foreach (var n in niveles)
+                    {
+                        using (var br = new SolidBrush(n.back))
+                            g.FillRectangle(br, x, 7, 10, 10);
+                        g.DrawRectangle(Pens.Gray, x, 7, 10, 10);
+                        x += 13;
+                        string etiqueta = Tl(n.key, n.fb);
+                        using (var br = new SolidBrush(Color.FromArgb(60,40,50)))
+                            g.DrawString(etiqueta, fnt, br, x, 6);
+                        x += (int)g.MeasureString(etiqueta, fnt).Width + 6;
+                    }
+                }
+            };
+
+            // Insertar leyenda DEBAJO del panelFiltrosSistema dentro de tabPageSistema
+            _leyendaCriticidad = leyenda;
+            tabPageSistema.Controls.Add(leyenda);
+            tabPageSistema.Controls.SetChildIndex(leyenda, tabPageSistema.Controls.IndexOf(panelFiltrosSistema));
+
+            // ── Row coloring para Negocio ─────────────────────────────────────
+            dgvNegocio.DataBindingComplete += (s, e2) => ColorearPorTipoNegocio();
+
+            // ── Status bar inferior ───────────────────────────────────────────
+            var sbar = new Panel
+            {
+                Dock      = DockStyle.Bottom,
+                Height    = 26,
+                BackColor = Color.FromArgb(64, 0, 64)
+            };
+            var lblSb = new Label
+            {
+                Dock      = DockStyle.Fill,
+                ForeColor = Color.FromArgb(200, 180, 210),
+                Font      = new Font("Segoe UI", 8f),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding   = new Padding(10, 0, 0, 0)
+            };
+            try
+            {
+                var u = new BLL.Usuario().ObtenerUsuarioActivo();
+                lblSb.Text = u != null ? $"{u.Username}  ·  {u.Perfil ?? "—"}" : "";
+            }
+            catch { }
+            sbar.Controls.Add(lblSb);
+            this.Controls.Add(sbar);
+        }
+
+        private void ColorearPorTipoNegocio()
+        {
+            foreach (DataGridViewRow fila in dgvNegocio.Rows)
+            {
+                if (fila.IsNewRow) continue;
+                string tipo = fila.Cells["Tipo"]?.Value?.ToString() ?? "";
+                Color back, fore;
+                switch (tipo)
+                {
+                    case "Venta":               back = Color.FromArgb(225, 240, 255); fore = Color.FromArgb(30,100,170);  break;
+                    case "Despacho":            back = Color.FromArgb(225, 240, 255); fore = Color.FromArgb(30,100,170);  break;
+                    case "Entrega":             back = Color.FromArgb(220, 248, 220); fore = Color.FromArgb(30,130,30);   break;
+                    case "Cancelacion":         back = Color.FromArgb(255, 225, 225); fore = Color.FromArgb(160,50,50);   break;
+                    case "AltaCliente":         back = Color.FromArgb(225, 248, 225); fore = Color.FromArgb(30,130,30);   break;
+                    case "ModificacionCliente": back = Color.FromArgb(240, 232, 255); fore = Color.FromArgb(100,80,160);  break;
+                    case "AltaPrenda":          back = Color.FromArgb(225, 248, 225); fore = Color.FromArgb(30,130,30);   break;
+                    case "ModificacionPrenda":  back = Color.FromArgb(255, 240, 225); fore = Color.FromArgb(160,100,20);  break;
+                    case "CambioEstadoPrenda":  back = Color.FromArgb(225, 240, 255); fore = Color.FromArgb(30,100,170);  break;
+                    default: continue;
+                }
+                fila.DefaultCellStyle.BackColor = back;
+                fila.DefaultCellStyle.ForeColor = fore;
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -66,16 +201,48 @@ namespace GUI
         public void UpdateLanguage(Idioma idioma)
         {
             Traducir(idioma);   // includes RellenarComboCriticidad
-            // Refrescar headers de las grillas actualmente visibles
             TraducirHeadersGrilla(dgvSistema, idioma, esSistema: true);
             TraducirHeadersGrilla(dgvNegocio, idioma, esSistema: false);
+            ActualizarLabelEstadisticas(dgvSistema, lblResultadosSistema);
+            ActualizarLabelEstadisticas(dgvNegocio, lblResultadosNegocio);
+            _leyendaCriticidad?.Invalidate();   // repinta leyenda con nuevo idioma
+        }
+
+        private void ActualizarLabelEstadisticas(DataGridView dgv, Label lbl)
+        {
+            var datos = dgv?.DataSource as DataTable;
+            if (datos == null) return;
+            var tR = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+            string linea1 = string.Format(
+                tR.ContainsKey("msg.bit.registros") ? tR["msg.bit.registros"].Texto : "  {0} registro(s)",
+                datos.Rows.Count);
+            if (dgv == dgvSistema && datos.Columns.Contains("criticidad"))
+            {
+                lbl.Height = 44;
+                lbl.Text   = linea1 + "\r\n  " + ComputarEstadisticasCriticidad(datos, GestorIdioma.IdiomaActual);
+            }
+            else if (dgv == dgvNegocio && datos.Columns.Contains("Tipo"))
+            {
+                lbl.Height = 44;
+                string resumen = ComputarEstadisticasTipoEvento(datos, GestorIdioma.IdiomaActual);
+                lbl.Text = string.IsNullOrEmpty(resumen) ? linea1 : linea1 + "\r\n  " + resumen;
+            }
+            else
+            {
+                lbl.Height = 44;
+                lbl.Text   = linea1;
+            }
         }
 
         private void Traducir(Idioma idioma)
         {
             var t = Traductor.ObtenerTraducciones(idioma);
+            string Tv(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
+
             if (this.Tag != null && t.ContainsKey(this.Tag.ToString()))
                 this.Text = t[this.Tag.ToString()].Texto;
+            lblBitTitulo.Text    = Tv("frm.bitacora",          "Auditoría — Bitácoras");
+            lblBitSubtitulo.Text = Tv("frm.bitacora.subtitulo","Registro de eventos del sistema y operaciones de negocio");
             // Tabs
             if (t.ContainsKey("tab.sistema")) tabPageSistema.Text = t["tab.sistema"].Texto;
             if (t.ContainsKey("tab.negocio")) tabPageNegocio.Text = t["tab.negocio"].Texto;
@@ -182,6 +349,7 @@ namespace GUI
                 CargarSistema();
 
             CargarNegocio();
+            SeleccionarTab(_tabInicial);
         }
 
         private void BtnUltimosDias_Click(object sender, EventArgs e)
@@ -208,9 +376,15 @@ namespace GUI
             CargarSistema();
         }
 
+        private string T(string key, string fallback)
+        {
+            var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+            return t.ContainsKey(key) ? t[key].Texto : fallback;
+        }
+
         private void BtnExportSistema_Click(object sender, EventArgs e)
         {
-            ExportarPdf(dgvSistema, "Bitácora del Sistema — WardrobeFlow");
+            ExportarPdf(dgvSistema, T("bit.pdf.titulosistema", "Bitácora del Sistema — WardrobeFlow"));
         }
 
         private void DgvSistema_DataBindingComplete(object sender,
@@ -242,7 +416,7 @@ namespace GUI
 
         private void BtnExportNegocio_Click(object sender, EventArgs e)
         {
-            ExportarPdf(dgvNegocio, "Bitácora de Negocio — WardrobeFlow");
+            ExportarPdf(dgvNegocio, T("bit.pdf.titulonegocio", "Bitácora de Negocio — WardrobeFlow"));
         }
 
         // ── Carga ─────────────────────────────────────────────────────────────
@@ -336,9 +510,6 @@ namespace GUI
             _headersImpresion = new string[dgv.Columns.Count];
             for (int i = 0; i < dgv.Columns.Count; i++)
                 _headersImpresion[i] = dgv.Columns[i].HeaderText;
-            _paginaActual    = 1;
-            _filaImpresion   = 0;
-
             _fuenteTitulo = new Font("Segoe UI", 13, FontStyle.Bold);
             _fuenteHeader = new Font("Segoe UI", 8,  FontStyle.Bold);
             _fuenteCelda  = new Font("Segoe UI", 7.5f);
@@ -346,14 +517,15 @@ namespace GUI
             var doc = new PrintDocument();
             doc.DefaultPageSettings.Landscape = true;
             doc.DefaultPageSettings.Margins   = new Margins(40, 40, 40, 40);
-            doc.PrintPage += ImprimirPagina;
+            doc.BeginPrint += (s2, e2) => { _filaImpresion = 0; _paginaActual = 1; };
+            doc.PrintPage  += ImprimirPagina;
 
             using (var preview = new PrintPreviewDialog())
             {
                 preview.Document = doc;
                 preview.Width    = 1050;
                 preview.Height   = 780;
-                preview.Text     = $"Vista Previa — {titulo}";
+                preview.Text     = $"{T("bit.pdf.vistaprevia", "Vista Previa")} — {titulo}";
                 preview.ShowDialog(this);
             }
         }
@@ -372,47 +544,50 @@ namespace GUI
             float xIzq       = margen.Left;
             float anchoTotal = margen.Width;
 
+            var vinoOscuro = Color.FromArgb(146, 62, 96);
+            var vinoClaro  = Color.FromArgb(252, 228, 235);
+            var vinoMedio  = Color.FromArgb(110, 40, 70);
+
             // ── Título (solo en la primera página) ───────────────────────────
             if (_paginaActual == 1)
             {
-                g.DrawString(_tituloImpresion, _fuenteTitulo, Brushes.DarkSlateBlue,
-                    xIzq, y);
+                using (var brTitulo = new SolidBrush(vinoOscuro))
+                    g.DrawString(_tituloImpresion, _fuenteTitulo, brTitulo, xIzq, y);
                 y += _fuenteTitulo.GetHeight(g) + 4;
 
-                g.DrawString(
-                    $"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}   |   " +
-                    $"{_tablaImpresion.Rows.Count} registro(s)",
-                    _fuenteCelda, Brushes.Gray, xIzq, y);
-                y += _fuenteCelda.GetHeight(g) + 8;
+                using (var brSub = new SolidBrush(vinoMedio))
+                    g.DrawString(
+                        $"Generado: {DateTime.Now:dd/MM/yyyy HH:mm}   |   " +
+                        $"{_tablaImpresion.Rows.Count} registro(s)",
+                        _fuenteCelda, brSub, xIzq, y);
+                y += _fuenteCelda.GetHeight(g) + 6;
 
-                // Línea separadora bajo el título
-                g.DrawLine(Pens.DarkSlateBlue, xIzq, y, xIzq + anchoTotal, y);
-                y += 4;
+                using (var penLinea = new Pen(vinoOscuro, 1.5f))
+                    g.DrawLine(penLinea, xIzq, y, xIzq + anchoTotal, y);
+                y += 5;
             }
 
             // ── Calcular anchos de columna ────────────────────────────────────
-            int nCols     = _tablaImpresion.Columns.Count;
+            int nCols      = _tablaImpresion.Columns.Count;
             float colAncho = anchoTotal / nCols;
 
             // ── Encabezados ───────────────────────────────────────────────────
-            float alturaHeader = _fuenteHeader.GetHeight(g) + 6;
+            float alturaHeader = _fuenteHeader.GetHeight(g) + 8;
 
-            using (var brushHeader = new SolidBrush(Color.FromArgb(60, 60, 120)))
-            using (var brushHeaderBg = new SolidBrush(Color.FromArgb(220, 220, 240)))
+            using (var brushHeaderBg = new SolidBrush(vinoOscuro))
+            using (var brushHeaderFg = new SolidBrush(Color.White))
             {
-                g.FillRectangle(brushHeaderBg,
-                    xIzq, y, anchoTotal, alturaHeader);
+                g.FillRectangle(brushHeaderBg, xIzq, y, anchoTotal, alturaHeader);
 
                 for (int col = 0; col < nCols; col++)
                 {
-                    // Usar el HeaderText traducido capturado del DataGridView
                     string nombre = (_headersImpresion != null && col < _headersImpresion.Length)
                         ? _headersImpresion[col]
                         : _tablaImpresion.Columns[col].ColumnName;
                     var rect = new RectangleF(
-                        xIzq + col * colAncho + 2, y + 2,
-                        colAncho - 4, alturaHeader - 4);
-                    g.DrawString(nombre, _fuenteHeader, brushHeader, rect,
+                        xIzq + col * colAncho + 3, y + 3,
+                        colAncho - 6, alturaHeader - 6);
+                    g.DrawString(nombre, _fuenteHeader, brushHeaderFg, rect,
                         new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
                 }
             }
@@ -422,44 +597,46 @@ namespace GUI
             float alturaCelda = _fuenteCelda.GetHeight(g) + 5;
             bool  alternar    = false;
 
-            while (_filaImpresion < _tablaImpresion.Rows.Count)
+            using (var brushAlternar  = new SolidBrush(vinoClaro))
+            using (var brushTexto     = new SolidBrush(Color.FromArgb(40, 15, 28)))
+            using (var penSeparador   = new Pen(Color.FromArgb(220, 180, 200), 0.5f))
             {
-                // Verificar si cabe otra fila en la página
-                if (y + alturaCelda > margen.Bottom - 20) break;
-
-                DataRow fila = _tablaImpresion.Rows[_filaImpresion];
-
-                // Fondo alternado
-                if (alternar)
-                    g.FillRectangle(new SolidBrush(Color.FromArgb(248, 248, 255)),
-                        xIzq, y, anchoTotal, alturaCelda);
-
-                for (int col = 0; col < nCols; col++)
+                while (_filaImpresion < _tablaImpresion.Rows.Count)
                 {
-                    string valor = fila[col]?.ToString() ?? "";
-                    var rect = new RectangleF(
-                        xIzq + col * colAncho + 2, y + 1,
-                        colAncho - 4, alturaCelda - 2);
-                    g.DrawString(valor, _fuenteCelda, Brushes.Black, rect,
-                        new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                    if (y + alturaCelda > margen.Bottom - 20) break;
+
+                    DataRow fila = _tablaImpresion.Rows[_filaImpresion];
+
+                    if (alternar)
+                        g.FillRectangle(brushAlternar, xIzq, y, anchoTotal, alturaCelda);
+
+                    for (int col = 0; col < nCols; col++)
+                    {
+                        string valor = fila[col]?.ToString() ?? "";
+                        var rect = new RectangleF(
+                            xIzq + col * colAncho + 3, y + 1,
+                            colAncho - 6, alturaCelda - 2);
+                        g.DrawString(valor, _fuenteCelda, brushTexto, rect,
+                            new StringFormat { Trimming = StringTrimming.EllipsisCharacter });
+                    }
+
+                    g.DrawLine(penSeparador, xIzq, y + alturaCelda, xIzq + anchoTotal, y + alturaCelda);
+
+                    y        += alturaCelda;
+                    alternar  = !alternar;
+                    _filaImpresion++;
                 }
-
-                // Línea de separación fina
-                g.DrawLine(Pens.LightGray,
-                    xIzq, y + alturaCelda, xIzq + anchoTotal, y + alturaCelda);
-
-                y        += alturaCelda;
-                alternar  = !alternar;
-                _filaImpresion++;
             }
 
             // ── Pie de página ─────────────────────────────────────────────────
-            g.DrawLine(Pens.DarkSlateBlue,
-                xIzq, margen.Bottom - 14, xIzq + anchoTotal, margen.Bottom - 14);
-            g.DrawString(
-                $"WardrobeFlow — Página {_paginaActual}",
-                _fuenteCelda, Brushes.Gray,
-                xIzq, margen.Bottom - 12);
+            using (var penPie  = new Pen(vinoOscuro, 1f))
+            using (var brPie   = new SolidBrush(vinoMedio))
+            {
+                g.DrawLine(penPie, xIzq, margen.Bottom - 16, xIzq + anchoTotal, margen.Bottom - 16);
+                g.DrawString(
+                    string.Format(T("bit.pdf.pagina", "WardrobeFlow — Página {0}"), _paginaActual),
+                    _fuenteCelda, brPie, xIzq, margen.Bottom - 14);
+            }
 
             // ¿Hay más filas? Entonces hay más páginas
             e.HasMorePages = _filaImpresion < _tablaImpresion.Rows.Count;
@@ -487,9 +664,15 @@ namespace GUI
                 lbl.Height = 44;
                 lbl.Text   = linea1 + "\r\n  " + ComputarEstadisticasCriticidad(datos, GestorIdioma.IdiomaActual);
             }
+            else if (dgv == dgvNegocio && datos.Columns.Contains("Tipo"))
+            {
+                lbl.Height = 44;
+                string resumen = ComputarEstadisticasTipoEvento(datos, GestorIdioma.IdiomaActual);
+                lbl.Text = string.IsNullOrEmpty(resumen) ? linea1 : linea1 + "\r\n  " + resumen;
+            }
             else
             {
-                lbl.Height = 24;
+                lbl.Height = 44;
                 lbl.Text   = linea1;
             }
         }
@@ -559,7 +742,44 @@ namespace GUI
 
             return partes.Count > 0
                 ? string.Join("   |   ", partes)
-                : "Sin datos de criticidad";
+                : (t.ContainsKey("stat.sindatos") ? t["stat.sindatos"].Texto : "Sin datos de criticidad");
+        }
+
+        private string ComputarEstadisticasTipoEvento(DataTable datos, Idioma idioma)
+        {
+            var conteos = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (DataRow row in datos.Rows)
+            {
+                string tipo = row["Tipo"]?.ToString() ?? "";
+                if (string.IsNullOrEmpty(tipo)) continue;
+                if (!conteos.ContainsKey(tipo)) conteos[tipo] = 0;
+                conteos[tipo]++;
+            }
+
+            var t = Traductor.ObtenerTraducciones(idioma);
+            var mapa = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "Venta",               "tevt.venta"          },
+                { "Cancelacion",         "tevt.cancelacion"    },
+                { "Despacho",            "tevt.despacho"       },
+                { "Entrega",             "tevt.entrega"        },
+                { "AltaPrenda",          "tevt.altaprenda"     },
+                { "ModificacionPrenda",  "tevt.modprenda"      },
+                { "CambioEstadoPrenda",  "tevt.cambiostprenda" },
+                { "AltaCliente",         "tevt.altacliente"    },
+                { "ModificacionCliente", "tevt.modcliente"     },
+                { "BajaCliente",         "tevt.bajacliente"    },
+            };
+
+            var partes = new List<string>();
+            foreach (var kv in conteos)
+            {
+                if (mapa.TryGetValue(kv.Key, out string clave) && t.ContainsKey(clave))
+                    partes.Add($"{t[clave].Texto}: {kv.Value}");
+                else
+                    partes.Add($"{kv.Key}: {kv.Value}");
+            }
+            return string.Join("   |   ", partes);
         }
 
         private void ColorearPorCriticidad(DataGridView dgv)

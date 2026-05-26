@@ -32,6 +32,7 @@ namespace GUI
         public ClienteForm(BE.Cliente cliente)
         {
             InitializeComponent();
+            try { string ico = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico"); if (System.IO.File.Exists(ico)) this.Icon = new System.Drawing.Icon(ico); } catch { }
 
             _esEdicion       = cliente != null;
             _clienteOriginal = cliente;
@@ -63,7 +64,8 @@ namespace GUI
             lblDNI.Text       = T("lbl.cli.dni",         "DNI * (7-8 dígitos)");
             lblEmail.Text     = T("lbl.cli.email",       "Email");
             lblMetodoPago.Text= T("lbl.cli.metodopago",  "Método de Pago *");
-            lblPlan.Text      = T("lbl.cli.plan",        "Plan de Suscripción");
+            lblPlan.Text           = T("lbl.cli.plan",        "Plan de Suscripción");
+            chkVencimiento.Text    = T("lbl.cli.vencimiento", "Fecha de Vencimiento");
 
             // Actualizar ítem "— Sin plan —" del combo de planes (índice 0)
             if (cmbPlan.Items.Count > 0)
@@ -71,6 +73,11 @@ namespace GUI
         }
 
         // ── Eventos del Designer ──────────────────────────────────────────────
+
+        private void ChkVencimiento_CheckedChanged(object sender, EventArgs e)
+        {
+            dtpVencimiento.Enabled = chkVencimiento.Checked;
+        }
 
         private void BtnCancelar_Click(object sender, EventArgs e)
         {
@@ -87,8 +94,10 @@ namespace GUI
                 var bllPlan = new BLL.PlanSuscripcion();
                 _planes = bllPlan.ObtenerActivos();
 
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string sinPlan = t.ContainsKey("combo.cli.sinplan") ? t["combo.cli.sinplan"].Texto : "— Sin plan —";
                 cmbPlan.Items.Clear();
-                cmbPlan.Items.Add("— Sin plan —");
+                cmbPlan.Items.Add(sinPlan);
                 foreach (var p in _planes)
                     cmbPlan.Items.Add($"{p.Nombre}  ({p.LimitePrendas} prendas — ${p.Precio:N2})");
 
@@ -96,7 +105,9 @@ namespace GUI
             }
             catch
             {
-                cmbPlan.Items.Add("— Error al cargar planes —");
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string errPlanes = t.ContainsKey("err.cli.errorplanes") ? t["err.cli.errorplanes"].Texto : "— Error al cargar planes —";
+                cmbPlan.Items.Add(errPlanes);
                 cmbPlan.SelectedIndex = 0;
             }
         }
@@ -117,6 +128,14 @@ namespace GUI
                 int planIdx = _planes.FindIndex(p => p.IdPlan == _clienteOriginal.IdPlan.Value);
                 cmbPlan.SelectedIndex = planIdx >= 0 ? planIdx + 1 : 0;  // +1 por "Sin plan"
             }
+
+            // Fecha de vencimiento
+            if (_clienteOriginal.FechaVencimiento.HasValue)
+            {
+                chkVencimiento.Checked = true;
+                dtpVencimiento.Enabled = true;
+                dtpVencimiento.Value   = _clienteOriginal.FechaVencimiento.Value;
+            }
         }
 
         private void BtnGuardar_Click(object sender, EventArgs e)
@@ -132,14 +151,15 @@ namespace GUI
 
                 ClienteEditado = new BE.Cliente
                 {
-                    IdCliente  = _esEdicion ? _clienteOriginal.IdCliente : 0,
-                    Nombre     = txtNombre.Text.Trim(),
-                    Apellido   = txtApellido.Text.Trim(),
-                    DNI        = txtDNI.Text.Trim(),
-                    Email      = string.IsNullOrWhiteSpace(txtEmail.Text) ? null : txtEmail.Text.Trim(),
-                    MetodoPago = cmbMetodoPago.SelectedItem?.ToString() ?? "Efectivo",
-                    IdPlan     = idPlan,
-                    FechaAlta  = _esEdicion ? _clienteOriginal.FechaAlta : DateTime.Now
+                    IdCliente        = _esEdicion ? _clienteOriginal.IdCliente : 0,
+                    Nombre           = txtNombre.Text.Trim(),
+                    Apellido         = txtApellido.Text.Trim(),
+                    DNI              = txtDNI.Text.Trim(),
+                    Email            = string.IsNullOrWhiteSpace(txtEmail.Text) ? null : txtEmail.Text.Trim(),
+                    MetodoPago       = cmbMetodoPago.SelectedItem?.ToString() ?? "Efectivo",
+                    IdPlan           = idPlan,
+                    FechaAlta        = _esEdicion ? _clienteOriginal.FechaAlta : DateTime.Now,
+                    FechaVencimiento = chkVencimiento.Checked ? dtpVencimiento.Value.Date : (DateTime?)null
                 };
 
                 this.DialogResult = DialogResult.OK;

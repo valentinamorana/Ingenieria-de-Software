@@ -117,6 +117,7 @@ namespace Servicios.Multiidioma
                 if (s.StartsWith("nuevocliente") || s.StartsWith("editarcliente")) return "NuevoCliente";
                 if (s.StartsWith("nuevaprenda")  || s.StartsWith("editarprenda"))  return "NuevaPrenda";
                 if (s.StartsWith("nuevopedido"))    return "NuevoPedido";
+                if (s.StartsWith("mantenimiento")) return "MantenimientoHistorial";
                 if (s.StartsWith("resetclave"))     return "ResetClave";
                 if (s.StartsWith("cambioestado"))   return "CambioEstado";
                 if (s.StartsWith("olvidepass"))     return "RecuperarClave";
@@ -124,6 +125,7 @@ namespace Servicios.Multiidioma
                 if (s.StartsWith("idiomas"))        return "FormIdiomas";
             }
             if (clave.StartsWith("col.cli.") || clave.StartsWith("msg.cli.") ||
+                clave.StartsWith("conf.baja.cli.") ||
                 clave == "lbl.sinplan" || clave == "lbl.buscar")              return "Clientes";
             if (clave.StartsWith("lbl.cli.")  || clave.StartsWith("combo.cli.") ||
                 clave.StartsWith("err.cli."))                                  return "NuevoCliente";
@@ -141,15 +143,17 @@ namespace Servicios.Multiidioma
             if (clave.StartsWith("err.clave.") || clave == "lbl.nueva.clave" ||
                 clave == "lbl.confirmar.clave" || clave == "btn.confirmar.reset") return "ResetClave";
             if (clave.StartsWith("col.plan.")  || clave.StartsWith("plan.") ||
-                clave.StartsWith("msg.planes.") ||
+                clave.StartsWith("msg.planes.") || clave.StartsWith("conf.planes.") ||
                 clave == "lbl.nuevopla" || clave == "lbl.nombreplan" || clave == "lbl.limiteprendas" ||
                 clave == "lbl.preciomensual" || clave == "btn.guardarplan" || clave == "btn.limpiar" ||
                 clave == "lbl.acciones" || clave == "btn.desactivar" || clave == "btn.activar" ||
                 clave == "lbl.planesreg" || clave == "lbl.editplan")           return "Planes";
-            if (clave.StartsWith("tab.")  || clave.StartsWith("col.bit.") ||
+            if (clave == "frm.bitacora" ||
+                clave.StartsWith("tab.")  || clave.StartsWith("col.bit.") ||
                 clave.StartsWith("col.neg.") || clave.StartsWith("stat.") ||
                 clave.StartsWith("crit.")  || clave.StartsWith("tevt.") ||
                 clave.StartsWith("msg.bit.") || clave.StartsWith("err.pdf.") ||
+                clave.StartsWith("bit.pdf.") ||
                 clave == "btn.buscar" || clave == "btn.limpiarfiltro" ||
                 clave == "btn.exportar" || clave == "btn.exportar.pdf" ||
                 clave == "btn.ver" || clave == "lbl.exportarpdf" ||
@@ -170,7 +174,12 @@ namespace Servicios.Multiidioma
                 clave == "btn.siguiente" || clave == "btn.volver" ||
                 clave == "btn.confirmar.pedido" || clave == "btn.procesando" ||
                 clave == "lbl.ped.infoplan" || clave == "err.ped.sinplan" ||
-                clave == "err.ped.sinprendas")                                 return "NuevoPedido";
+                clave == "err.ped.sinprendas" || clave == "err.ped.suscvencida" ||
+                clave.StartsWith("lbl.ped.res.") ||
+                clave == "conf.ped.titulo" || clave == "conf.ped.msg")         return "NuevoPedido";
+            if (clave == "frm.mantenimiento" || clave == "btn.mantenimiento" ||
+                clave.StartsWith("col.mant.")  || clave.StartsWith("mant.")  ||
+                clave.StartsWith("msg.mant."))                                 return "MantenimientoHistorial";
             if (clave.StartsWith("col.ped.") || clave.StartsWith("urg.") ||
                 clave.StartsWith("est.")     || clave.StartsWith("col.det.") ||
                 clave == "btn.despachar" || clave == "btn.entregado" ||
@@ -178,6 +187,7 @@ namespace Servicios.Multiidioma
                 clave == "lbl.detallepedido" || clave == "lbl.ped.detalletitulo") return "PedidosRealizados";
             if (clave.StartsWith("lbl.hist.") || clave.StartsWith("combo.hist.") ||
                 clave.StartsWith("btn.hist.") || clave.StartsWith("col.hist.") ||
+                clave.StartsWith("msg.hist.") || clave.StartsWith("conf.hist.") ||
                 clave.StartsWith("accion.")   || clave == "err.hist.restaurar") return "Historial";
             if (clave.StartsWith("notif.") || clave.StartsWith("btn.copiar.") ||
                 clave == "btn.copiado")                                         return "Notificacion";
@@ -185,17 +195,26 @@ namespace Servicios.Multiidioma
                 clave.StartsWith("msg.recup.") || clave == "btn.enviar.solicitud") return "RecuperarClave";
             if (clave.StartsWith("lbl.permisos.") || clave.StartsWith("btn.permisos.") ||
                 clave.StartsWith("msg.permisos.") || clave.StartsWith("perm."))    return "GestorPermisos";
-            if (clave.StartsWith("lbl.idiomas.")  || clave.StartsWith("btn.idiomas."))  return "FormIdiomas";
+            if (clave.StartsWith("lbl.idiomas.")  || clave.StartsWith("btn.idiomas.") ||
+                clave.StartsWith("msg.idiomas.")  || clave.StartsWith("conf.idiomas."))  return "FormIdiomas";
             if (clave == "frm.backup"    || clave.StartsWith("btn.backup.") ||
-                clave.StartsWith("col.backup.") ||
-                clave == "lbl.backup.info" || clave == "mnu.backup")           return "Backup";
+                clave.StartsWith("col.backup.") || clave.StartsWith("msg.backup.") ||
+                clave == "lbl.backup.info" || clave == "lbl.backup.ubicacion" ||
+                clave == "mnu.backup")                                          return "Backup";
+            if (clave == "frm.restauracion" || clave.StartsWith("lbl.rest.") ||
+                clave.StartsWith("btn.rest.") || clave.StartsWith("msg.rest.") ||
+                clave.StartsWith("conf.rest."))                                  return "Restauracion";
+            if (clave == "frm.dashboard" || clave.StartsWith("dash."))           return "Dashboard";
+            if (clave.StartsWith("rpt."))                                       return "ReporteJornada";
             if (clave == "frm.historialusr" || clave.StartsWith("lbl.ver.") ||
                 clave.StartsWith("btn.ver.")  || clave.StartsWith("col.ver.") ||
-                clave == "mnu.historialusr")                                   return "VersionHistorial";
-            if (clave == "lbl.usuario" || clave == "lbl.contrasena" ||
-                clave == "btn.ingresar" || clave == "btn.salir" ||
-                clave == "lnk.olvide"  || clave == "lbl.idioma" || clave == "lbl.subtitulo" ||
-                clave == "lbl.iniciarsesion") return "Login";
+                clave.StartsWith("msg.historial.") || clave == "mnu.historialusr") return "VersionHistorial";
+            if (clave == "lbl.usuario"    || clave == "lbl.contrasena"  ||
+                clave == "btn.ingresar"   || clave == "btn.salir"       ||
+                clave == "lnk.olvide"     || clave == "lbl.idioma"      ||
+                clave == "lbl.subtitulo"  || clave == "lbl.iniciarsesion" ||
+                clave == "lbl.bienvenido" || clave == "lbl.credenciales" ||
+                clave == "lbl.divider"    || clave == "lbl.brand.desc") return "Login";
             if (clave.StartsWith("msg.modulo.") || clave == "lbl.proximamente") return "Menu";
             return "General";
         }
@@ -217,6 +236,10 @@ namespace Servicios.Multiidioma
             { "lbl.idioma",       "Idioma:"                        },
             // Login — subtítulo
             { "lbl.subtitulo",    "PORTAL DE EMPLEADOS"            },
+            { "lbl.bienvenido",   "Bienvenido de nuevo"            },
+            { "lbl.credenciales", "Ingresá tus credenciales para continuar" },
+            { "lbl.divider",      "o"                              },
+            { "lbl.brand.desc",   "Acceso seguro y centralizado\na todos los módulos del sistema." },
             // Menú principal
             { "mnu.perfil",       "Perfil"                         },
             { "mnu.inventario",   "Inventario"                     },
@@ -270,7 +293,8 @@ namespace Servicios.Multiidioma
             { "btn.activar",      "Activar Plan"                   },
             { "lbl.planesreg",    "Planes registrados"             },
             // Bitácora
-            { "frm.bitacora",     "Auditoría — Bitácoras del Sistema" },
+            { "frm.bitacora",            "Auditoría — Bitácoras del Sistema"                              },
+            { "frm.bitacora.subtitulo", "Registro de eventos del sistema y operaciones de negocio"    },
             { "tab.sistema",      "🔐  Bitácora del Sistema"       },
             { "tab.negocio",      "📦  Bitácora de Negocio"        },
             { "lbl.ultimos",      "Últimos"                        },
@@ -343,6 +367,7 @@ namespace Servicios.Multiidioma
             { "stat.intlogin",     "Int.Login"                     },
             { "stat.recupclave",   "Recup.Clave"                   },
             { "stat.bloqueos",     "Bloqueos"                      },
+            { "stat.sindatos",     "Sin datos de criticidad"       },
             // Historial de cambios de Pedido
             { "frm.historial",        "Historial de Cambios — Pedido"      },
             { "lbl.hist.pedido",      "Pedido #"                           },
@@ -583,6 +608,7 @@ namespace Servicios.Multiidioma
             { "err.recup.nousername",    "Ingresá tu nombre de usuario."                          },
             { "err.recup.nousuario",     "No se encontró el usuario '{0}'.\nVerificá que escribiste tu nombre correctamente." },
             { "msg.recup.exito",         "Usuario '{0}' encontrado.\nContacta al administrador para que resetee\ntu contrasena desde Administrar -> Usuarios." },
+            { "err.recup.verificar",     "Error al verificar el usuario: {0}"                    },
             // Usuarios — mensajes de operación
             { "msg.usr.creado",          "Usuario '{0}' [{1}] creado correctamente."              },
             { "err.usr.selecciona",      "Seleccioná un usuario de la lista."                     },
@@ -634,8 +660,110 @@ namespace Servicios.Multiidioma
             { "frm.backup",              "Backup y Restauración"                                  },
             { "btn.backup.crear",        "Generar Copia de Seguridad (.bak)"                      },
             { "btn.backup.restaurar",    "Restaurar Copia de Seguridad (.bak)"                    },
+            { "btn.backup.eliminar",     "Eliminar"                                               },
+            { "btn.backup.externo",      "Desde archivo..."                                       },
+            { "col.backup.archivo",      "Archivo"                                                },
+            { "col.backup.fecha",        "Fecha"                                                  },
+            { "col.backup.autor",        "Autor"                                                  },
+            { "col.backup.tamanio",      "Tamaño"                                                 },
             { "lbl.backup.info",         "Nota: la restauración cierra las conexiones activas y reinicia la aplicación." },
+            { "lbl.backup.ubicacion",    "Ubicación de copias:"                                   },
+            { "msg.backup.tituloeliminar","Confirmar Eliminación"                                 },
+            { "msg.backup.confirmeliminar","¿Eliminar la copia de seguridad?\n\"{0}\"\n\nEsta acción no se puede deshacer." },
+            { "msg.backup.titulorestaura","Confirmar Restauración"                                },
+            { "msg.backup.confirmrestaura","¿Restaurar la base de datos desde:\n\"{0}\"?\n\nEsta operación sobrescribirá todos los datos actuales\ny reiniciará la aplicación." },
             { "mnu.backup",              "Backup y Restauración"                                  },
+            { "msg.backup.creadoexito",  "Copia de seguridad generada con éxito:\n{0}"           },
+            { "msg.backup.restauradaexito","Base de datos restaurada con éxito.\nLa aplicación se reiniciará." },
+            { "msg.backup.restauradatitulo","Restauración Exitosa"                                },
+            { "lbl.backup.sincopias",    "Sin copias de seguridad generadas aún."                 },
+            { "lbl.backup.conteo",       "{0} copia(s) disponible(s). La más reciente: {1}"      },
+            // RestauracionForm (Integridad DV)
+            { "frm.restauracion",        "Integridad del Sistema"                                 },
+            { "lbl.rest.titulo",         "Integridad del Sistema Comprometida"                    },
+            { "lbl.rest.subtitulo",      "Se detectaron discrepancias en los dígitos verificadores. El acceso está bloqueado." },
+            { "lbl.rest.detalle",        "Detalle del error:"                                     },
+            { "btn.rest.recalcular",     "Recalcular Dígitos Verificadores"                       },
+            { "btn.rest.backup",         "Restaurar desde Backup"                                 },
+            { "btn.rest.salir",          "Salir"                                                  },
+            // Menú — Panel de Control + Bitácoras divididas
+            { "mnu.dashboard",           "Panel de Control"                                       },
+            { "mnu.bitacora.sistema",    "Bitácora del Sistema"                                   },
+            { "mnu.bitacora.negocio",    "Bitácora de Negocio"                                    },
+            { "mnu.reportejornada",      "Reporte de Jornada"                                     },
+            // Dashboard — Panel de Control
+            { "frm.dashboard",           "Panel de Control"                                       },
+            { "dash.prendas",            "Prendas\ndisponibles"                                   },
+            { "dash.clientes",           "Clientes\nregistrados"                                  },
+            { "dash.pedidos",            "Pedidos\npendientes"                                    },
+            { "dash.backup",             "días sin\nbackup"                                       },
+            { "dash.btn.refrescar",      "↻ Actualizar"                                           },
+            // Reporte de Jornada
+            { "frm.reportejornada",      "Reporte de Jornada — WardrobeFlow"                      },
+            { "rpt.generar",             "Generar"                                                },
+            { "rpt.comparar",            "Comparar jornadas"                                      },
+            { "rpt.exportartxt",         "Exportar TXT"                                           },
+            { "rpt.exportarpdf",         "Exportar PDF"                                           },
+            { "rpt.fecha",               "Jornada:"                                               },
+            { "rpt.fecha2",              "Comparar con:"                                          },
+            { "rpt.kpi.prendas",         "Prendas disponibles"                                    },
+            { "rpt.kpi.clientes",        "Clientes registrados"                                   },
+            { "rpt.kpi.eventos",         "Eventos del día"                                        },
+            { "rpt.kpi.backup",          "días sin backup"                                        },
+            { "rpt.sinDatos",            "Sin eventos registrados para la jornada seleccionada."  },
+            { "rpt.limpiar",             "Limpiar"                                                },
+            { "rpt.subtitulo",           "Eventos de negocio por jornada con exportación a TXT"  },
+            // Reporte de Jornada — cuerpo del texto generado
+            { "rpt.txt.titulo",          "REPORTE DE JORNADA"                                    },
+            { "rpt.txt.resumen",         "RESUMEN DEL SISTEMA"                                   },
+            { "rpt.txt.prendas",         "Prendas disponibles"                                   },
+            { "rpt.txt.clientes",        "Clientes registrados"                                  },
+            { "rpt.txt.diassinbkp",      "Días sin backup"                                       },
+            { "rpt.txt.sinbackups",      "Sin backups"                                            },
+            { "rpt.txt.eventos",         "EVENTOS DE NEGOCIO DEL DÍA"                            },
+            { "rpt.txt.sinevt",          "(sin eventos registrados para esta jornada)"            },
+            { "rpt.txt.usuario",         "Usuario"                                               },
+            { "rpt.txt.cliente",         "Cliente"                                               },
+            { "rpt.txt.totalevt",        "TOTAL EVENTOS"                                         },
+            { "rpt.txt.generado",        "Generado"                                              },
+            { "rpt.txt.comparacion",     "COMPARACIÓN DE JORNADAS"                               },
+            { "rpt.txt.jornada",         "JORNADA"                                               },
+            { "rpt.txt.sinevtjorn",      "(sin eventos registrados en esta jornada)"              },
+            { "rpt.txt.comparfinal",     "COMPARATIVO FINAL"                                     },
+            { "rpt.txt.fecha",           "Fecha"                                                 },
+            { "rpt.txt.eventostot",      "Eventos totales"                                       },
+            { "rpt.txt.masmasa",         "tuvo más actividad"                                    },
+            { "rpt.txt.ninguna",         "Ninguna jornada tuvo eventos registrados."              },
+            { "rpt.txt.iguales",         "Ambas jornadas tuvieron la misma cantidad de eventos." },
+            { "rpt.txt.rptoegenerado",   "Reporte generado"                                      },
+            { "rpt.txt.compgenerada",    "Comparación generada"                                  },
+            { "rpt.txt.impresionenv",    "Impresión enviada"                                     },
+            { "bit.pdf.titulosistema",   "Bitácora del Sistema — WardrobeFlow"                   },
+            { "bit.pdf.titulonegocio",   "Bitácora de Negocio — WardrobeFlow"                   },
+            { "bit.pdf.pagina",          "WardrobeFlow — Página {0}"                             },
+            { "bit.pdf.vistaprevia",     "Vista Previa"                                          },
+            { "dash.backup.hoy",         "Hoy"                                                   },
+            { "dash.sesion.iniciada",    "Sesión iniciada:"                                      },
+            // Dashboard — actividad reciente y mini-stats
+            { "dash.actividad.titulo",  "Actividad reciente"                                    },
+            { "dash.stats.titulo",      "Resumen de eventos"                                    },
+            { "dash.col.fecha",         "Fecha"                                                 },
+            { "dash.col.evento",        "Evento"                                                },
+            { "dash.col.usuario",       "Usuario"                                               },
+            // Dashboard — avisos de backup y diálogo de configuración
+            { "dash.aviso.sinbackup",   "⚠  Sin backups. Generá uno desde Administrar → Backup."           },
+            { "dash.aviso.vencido",     "⚠  Hace {0} día(s) sin backup — recordatorio cada {1} días."      },
+            { "dash.cfg.titulo",        "Recordatorio de Backup"                                            },
+            { "dash.cfg.recada",        "Recordarme cada:"                                                  },
+            { "dash.cfg.dias",          "días"                                                              },
+            { "dash.cfg.guardar",       "Guardar"                                                           },
+            // Reporte de Jornada — menús de exportación y diálogos
+            { "rpt.menu.guardartxt",    "Guardar como .TXT"                                                 },
+            { "rpt.menu.imprimir",      "Imprimir / Exportar PDF"                                           },
+            { "rpt.menu.guardarcmp",    "Guardar comparación como .TXT"                                     },
+            { "rpt.dlg.guardartxt",     "Guardar como TXT"                                                  },
+            { "rpt.dlg.exito.titulo",   "Éxito"                                                             },
+            { "rpt.dlg.exito.msg",      "Archivo guardado:\n{0}"                                            },
             // Historial de Cambios de Usuarios (T06)
             { "frm.historialusr",        "Historial de Cambios de Usuarios"                       },
             { "lbl.ver.usuario",         "Usuario:"                                               },
@@ -647,6 +775,82 @@ namespace Servicios.Multiidioma
             { "col.ver.detalle",         "Detalle"                                                },
             { "col.ver.estado",          "Estado"                                                 },
             { "mnu.historialusr",        "Historial de Cambios"                                   },
+            // Mensajes ConfirmarAdminForm
+            { "msg.confirmar.vacio",         "Ingrese usuario y contraseña."                                              },
+            { "msg.confirmar.invalido",      "Credenciales inválidas o el usuario no es Administrador."                  },
+            // Mensajes VersionHistorialForm
+            { "msg.historial.sinseleccion",  "Seleccioná una versión de la grilla."                                      },
+            { "msg.historial.atencion",      "Atención"                                                                  },
+            { "msg.historial.confirmar",     "¿Restaurar al usuario '{0}' al estado del {1}?\n\nDetalle del snapshot: {2}\n\nEsta acción es reversible (se graba un nuevo snapshot antes de restaurar)." },
+            { "msg.historial.restaurado",    "Versión restaurada correctamente."                                         },
+            // Clientes — operación y confirmación de baja
+            { "msg.cli.registrado",          "Cliente '{0}' registrado correctamente."                                  },
+            { "msg.cli.actualizado",         "Cliente '{0}' actualizado."                                               },
+            { "msg.cli.eliminado",           "Cliente '{0}' eliminado."                                                 },
+            { "conf.baja.cli.msg",           "¿Dar de baja a {0} (DNI {1})?\n\nEsta acción no se puede deshacer."      },
+            { "conf.baja.cli.titulo",        "Confirmar Baja"                                                           },
+            { "err.cli.errorplanes",         "— Error al cargar planes —"                                              },
+            // Planes — operación y confirmaciones
+            { "msg.planes.creado",           "Plan '{0}' creado."                                                       },
+            { "msg.planes.actualizado",      "Plan '{0}' actualizado."                                                  },
+            { "msg.planes.desactivado",      "Plan '{0}' desactivado."                                                  },
+            { "msg.planes.reactivado",       "Plan '{0}' reactivado."                                                   },
+            { "conf.planes.desat.msg",       "¿Desactivar el plan '{0}'?\n\nLos clientes con este plan no serán afectados." },
+            { "conf.planes.desat.tit",       "Confirmar Desactivación"                                                  },
+            { "conf.planes.act.msg",         "¿Reactivar el plan '{0}'?\n\nEl plan volverá a estar disponible para nuevas suscripciones." },
+            { "conf.planes.act.tit",         "Confirmar Activación"                                                     },
+            // FormIdiomas — mensajes
+            { "msg.idiomas.activado",        "Idioma activado."                                                         },
+            { "msg.idiomas.desactivado",     "Idioma desactivado."                                                      },
+            { "conf.idiomas.desactivar",     "¿Desactivar este idioma? Los usuarios no podrán seleccionarlo."          },
+            { "conf.idiomas.titulo",         "Confirmar"                                                                 },
+            // PedidoHistorialForm — restauración
+            { "msg.hist.restaurado",         "Pedido #{0} restaurado correctamente."                                    },
+            { "conf.hist.restaurar.msg",     "¿Restaurar el pedido #{0} al estado anterior a '{1}' (op. #{2})?\n\n⚠ Nota: esta operación modifica el estado del Pedido en la base de datos.\nEl estado de las Prendas asociadas NO se revierte automáticamente.\n\n¿Confirmar?" },
+            // Usuarios — DV
+            { "msg.usr.dvrecalculados",      "DVH y DVV recalculados correctamente para todos los usuarios."            },
+            { "msg.usr.errordv",             "Error al recalcular DV: {0}"                                              },
+            // RestauracionForm — mensajes adicionales
+            { "msg.rest.dvexito",            "Dígitos verificadores recalculados con éxito.\nYa puede ingresar al sistema." },
+            { "msg.rest.dvtitulo",           "Integridad restaurada"                                                    },
+            { "conf.rest.sobreescribir",     "¿Está seguro? Esta operación sobrescribirá todos los datos actuales y reiniciará la aplicación." },
+            { "msg.rest.errorrecalcular",    "Error al recalcular: {0}"                                                 },
+            { "msg.rest.errorrestaurar",     "Error al restaurar: {0}"                                                  },
+            // BackupForm — errores en catch
+            { "msg.backup.errorgenerar",     "Error al generar copia de seguridad:\n{0}"                               },
+            { "msg.backup.erroreliminar",    "Error al eliminar:\n{0}"                                                  },
+            { "msg.backup.errorrestaurar",   "Error al restaurar:\n{0}"                                                 },
+            // VersionHistorialForm — errores en catch
+            { "msg.historial.errorcargar",   "Error al cargar historial:\n{0}"                                          },
+            { "msg.historial.errorrestaur",  "Error al restaurar versión:\n{0}"                                         },
+            // Título genérico de error
+            { "msg.error.titulo",            "Error"                                                                     },
+            // Clientes — fecha de vencimiento de suscripción
+            { "lbl.cli.vencimiento",         "Fecha de Vencimiento"                                                      },
+            { "col.cli.vencimiento",         "Vencimiento"                                                               },
+            { "msg.cli.sinvenc",             "Sin vencimiento"                                                           },
+            { "msg.cli.vencido",             "Vencido"                                                                   },
+            { "msg.cli.vigente",             "Vigente"                                                                   },
+            // NuevoPedido — suscripción vencida + resumen traducido
+            { "err.ped.suscvencida",         "⚠ La suscripción de {0} venció el {1}.\nRenovar en el módulo de Clientes." },
+            { "lbl.ped.res.linea1",          "Seleccionadas: {0}  |  Ya en uso: {1}  |  Total: {2}"                     },
+            { "lbl.ped.res.limite",          "✗ El plan '{0}' permite {1} prenda(s). Estás superando el límite por {2}." },
+            { "lbl.ped.res.vacio",           "Podés agregar hasta {0} prenda(s) (plan {1})."                            },
+            { "lbl.ped.res.parcial",         "ℹ El plan '{0}' permite {1}. Estás eligiendo {2} de {3} posibles — podés agregar más." },
+            { "lbl.ped.res.lleno",           "✓ Alcanzás el máximo del plan '{0}' ({1} prendas)."                       },
+            { "conf.ped.titulo",             "Confirmar Pedido"                                                          },
+            { "conf.ped.msg",                "Confirmar pedido para {0}:\n\n  • {1}\n\nTotal: {2} prenda(s)\nMétodo de pago: {3}" },
+            // Mantenimiento — historial de limpieza de prendas
+            { "frm.mantenimiento",           "Historial de Mantenimiento"                                                },
+            { "btn.mantenimiento",           "🔧 Mantenimiento"                                                         },
+            { "col.mant.entrada",            "Entrada"                                                                   },
+            { "col.mant.salida",             "Salida"                                                                    },
+            { "col.mant.duracion",           "Duración (días)"                                                           },
+            { "col.mant.actor",              "Responsable"                                                               },
+            { "col.mant.estado",             "Estado"                                                                    },
+            { "mant.abierto",                "En limpieza"                                                               },
+            { "mant.cerrado",                "Finalizado"                                                                },
+            { "msg.mant.sinregistros",       "Esta prenda no tiene historial de mantenimiento."                         },
         });
 
         // ── Diccionario English (EN) ──────────────────────────────────────────
@@ -666,6 +870,10 @@ namespace Servicios.Multiidioma
             { "lbl.idioma",       "Language:"                       },
             // Login — subtitle
             { "lbl.subtitulo",    "EMPLOYEE PORTAL"                 },
+            { "lbl.bienvenido",   "Welcome back"                    },
+            { "lbl.credenciales", "Enter your credentials to continue" },
+            { "lbl.divider",      "or"                              },
+            { "lbl.brand.desc",   "Secure and centralized access\nto all system modules." },
             // Main menu
             { "mnu.perfil",       "Profile"                         },
             { "mnu.inventario",   "Inventory"                       },
@@ -719,7 +927,8 @@ namespace Servicios.Multiidioma
             { "btn.activar",      "Activate Plan"                  },
             { "lbl.planesreg",    "Registered plans"               },
             // Audit Log
-            { "frm.bitacora",     "Audit Log"                      },
+            { "frm.bitacora",            "Audit Log"                                                  },
+            { "frm.bitacora.subtitulo", "Record of system events and business operations"            },
             { "tab.sistema",      "🔐  System Log"                 },
             { "tab.negocio",      "📦  Business Log"               },
             { "lbl.ultimos",      "Last"                           },
@@ -792,6 +1001,7 @@ namespace Servicios.Multiidioma
             { "stat.intlogin",     "Login Att."                    },
             { "stat.recupclave",   "Pwd Reset"                     },
             { "stat.bloqueos",     "Lockouts"                      },
+            { "stat.sindatos",     "No severity data"              },
             // Order Change History
             { "frm.historial",        "Order Change History"               },
             { "lbl.hist.pedido",      "Order #"                            },
@@ -882,6 +1092,11 @@ namespace Servicios.Multiidioma
             { "lbl.recup.desc",       "Enter your username. An administrator\ncan reset your password from the system." },
             { "lbl.recup.usuario",    "Username:"                          },
             { "btn.enviar.solicitud", "Submit request"                     },
+            // Password recovery — messages
+            { "err.recup.nousername",    "Enter your username."                                                           },
+            { "err.recup.nousuario",     "User '{0}' not found.\nCheck that you typed your username correctly."          },
+            { "msg.recup.exito",         "User '{0}' found.\nContact the administrator to reset\nyour password from Manage → Users." },
+            { "err.recup.verificar",     "Error verifying user: {0}"                                                     },
             // Order detail — garment columns
             { "col.det.prenda",       "Garment"                            },
             // PrendaForm — titles and labels
@@ -1079,8 +1294,110 @@ namespace Servicios.Multiidioma
             { "frm.backup",              "Backup & Restore"                                       },
             { "btn.backup.crear",        "Create Backup (.bak)"                                   },
             { "btn.backup.restaurar",    "Restore Backup (.bak)"                                  },
+            { "btn.backup.eliminar",     "Delete"                                                 },
+            { "btn.backup.externo",      "From file..."                                           },
+            { "col.backup.archivo",      "File"                                                   },
+            { "col.backup.fecha",        "Date"                                                   },
+            { "col.backup.autor",        "Author"                                                 },
+            { "col.backup.tamanio",      "Size"                                                   },
             { "lbl.backup.info",         "Note: restore will close active connections and restart the application." },
+            { "lbl.backup.ubicacion",    "Backup location:"                                       },
+            { "msg.backup.tituloeliminar","Confirm Deletion"                                      },
+            { "msg.backup.confirmeliminar","Delete the backup file?\n\"{0}\"\n\nThis action cannot be undone." },
+            { "msg.backup.titulorestaura","Confirm Restore"                                       },
+            { "msg.backup.confirmrestaura","Restore the database from:\n\"{0}\"?\n\nThis will overwrite all current data\nand restart the application." },
             { "mnu.backup",              "Backup & Restore"                                       },
+            { "msg.backup.creadoexito",  "Backup created successfully:\n{0}"                     },
+            { "msg.backup.restauradaexito","Database restored successfully.\nThe application will restart." },
+            { "msg.backup.restauradatitulo","Restore Successful"                                  },
+            { "lbl.backup.sincopias",    "No backups created yet."                               },
+            { "lbl.backup.conteo",       "{0} backup(s) available. Most recent: {1}"             },
+            // RestauracionForm (DV Integrity)
+            { "frm.restauracion",        "System Integrity"                                       },
+            { "lbl.rest.titulo",         "System Integrity Compromised"                           },
+            { "lbl.rest.subtitulo",      "Discrepancies were found in the check digits. Access is blocked." },
+            { "lbl.rest.detalle",        "Error detail:"                                          },
+            { "btn.rest.recalcular",     "Recalculate Check Digits"                               },
+            { "btn.rest.backup",         "Restore from Backup"                                    },
+            { "btn.rest.salir",          "Exit"                                                   },
+            // Menu — Dashboard + split Audit Logs
+            { "mnu.dashboard",           "Dashboard"                                              },
+            { "mnu.bitacora.sistema",    "System Log"                                             },
+            { "mnu.bitacora.negocio",    "Business Log"                                           },
+            // Dashboard — Control Panel
+            { "frm.dashboard",           "Control Panel"                                          },
+            { "dash.prendas",            "Garments\navailable"                                    },
+            { "dash.clientes",           "Clients\nregistered"                                    },
+            { "dash.pedidos",            "Orders\npending"                                        },
+            { "dash.backup",             "days without\nbackup"                                   },
+            { "dash.btn.refrescar",      "↻ Refresh"                                              },
+            { "mnu.reportejornada",      "Daily Report"                                           },
+            // Daily Report
+            { "frm.reportejornada",      "Daily Report — WardrobeFlow"                            },
+            { "rpt.generar",             "Generate"                                               },
+            { "rpt.comparar",            "Compare shifts"                                         },
+            { "rpt.exportartxt",         "Export TXT"                                             },
+            { "rpt.exportarpdf",         "Export PDF"                                             },
+            { "rpt.fecha",               "Shift:"                                                 },
+            { "rpt.fecha2",              "Compare with:"                                          },
+            { "rpt.kpi.prendas",         "Available garments"                                     },
+            { "rpt.kpi.clientes",        "Registered clients"                                     },
+            { "rpt.kpi.eventos",         "Events today"                                           },
+            { "rpt.kpi.backup",          "days since backup"                                      },
+            { "rpt.sinDatos",            "No events recorded for the selected shift."             },
+            { "rpt.limpiar",             "Clear"                                                  },
+            { "rpt.subtitulo",           "Business events per day with TXT export"               },
+            // Daily Report — generated report body text
+            { "rpt.txt.titulo",          "DAILY REPORT"                                          },
+            { "rpt.txt.resumen",         "SYSTEM SUMMARY"                                        },
+            { "rpt.txt.prendas",         "Available garments"                                    },
+            { "rpt.txt.clientes",        "Registered clients"                                    },
+            { "rpt.txt.diassinbkp",      "Days without backup"                                   },
+            { "rpt.txt.sinbackups",      "No backups"                                            },
+            { "rpt.txt.eventos",         "BUSINESS EVENTS OF THE DAY"                            },
+            { "rpt.txt.sinevt",          "(no events recorded for this shift)"                   },
+            { "rpt.txt.usuario",         "User"                                                  },
+            { "rpt.txt.cliente",         "Client"                                                },
+            { "rpt.txt.totalevt",        "TOTAL EVENTS"                                         },
+            { "rpt.txt.generado",        "Generated"                                             },
+            { "rpt.txt.comparacion",     "SHIFT COMPARISON"                                      },
+            { "rpt.txt.jornada",         "SHIFT"                                                 },
+            { "rpt.txt.sinevtjorn",      "(no events recorded for this shift)"                   },
+            { "rpt.txt.comparfinal",     "FINAL SUMMARY"                                         },
+            { "rpt.txt.fecha",           "Date"                                                  },
+            { "rpt.txt.eventostot",      "Total events"                                          },
+            { "rpt.txt.masmasa",         "had more activity"                                     },
+            { "rpt.txt.ninguna",         "Neither shift had any events recorded."                },
+            { "rpt.txt.iguales",         "Both shifts had the same number of events."            },
+            { "rpt.txt.rptoegenerado",   "Report generated"                                      },
+            { "rpt.txt.compgenerada",    "Comparison generated"                                  },
+            { "rpt.txt.impresionenv",    "Print sent"                                            },
+            { "bit.pdf.titulosistema",   "System Log — WardrobeFlow"                            },
+            { "bit.pdf.titulonegocio",   "Business Log — WardrobeFlow"                         },
+            { "bit.pdf.pagina",          "WardrobeFlow — Page {0}"                              },
+            { "bit.pdf.vistaprevia",     "Print Preview"                                         },
+            { "dash.backup.hoy",         "Today"                                                 },
+            { "dash.sesion.iniciada",    "Session started:"                                      },
+            // Dashboard — recent activity and mini-stats
+            { "dash.actividad.titulo",  "Recent activity"                                       },
+            { "dash.stats.titulo",      "Event summary"                                         },
+            { "dash.col.fecha",         "Date"                                                  },
+            { "dash.col.evento",        "Event"                                                 },
+            { "dash.col.usuario",       "User"                                                  },
+            // Dashboard — backup notices and config dialog
+            { "dash.aviso.sinbackup",   "⚠  No backups. Generate one from Administration → Backup."        },
+            { "dash.aviso.vencido",     "⚠  {0} day(s) without backup — reminder every {1} days."          },
+            { "dash.cfg.titulo",        "Backup Reminder"                                                   },
+            { "dash.cfg.recada",        "Remind me every:"                                                  },
+            { "dash.cfg.dias",          "days"                                                              },
+            { "dash.cfg.guardar",       "Save"                                                              },
+            // Daily Report — export menus and dialogs
+            { "rpt.menu.guardartxt",    "Save as .TXT"                                                      },
+            { "rpt.menu.imprimir",      "Print / Export PDF"                                                },
+            { "rpt.menu.guardarcmp",    "Save comparison as .TXT"                                           },
+            { "rpt.dlg.guardartxt",     "Save as TXT"                                                       },
+            { "rpt.dlg.exito.titulo",   "Success"                                                           },
+            { "rpt.dlg.exito.msg",      "File saved:\n{0}"                                                  },
             // User Change History (T06)
             { "frm.historialusr",        "User Change History"                                    },
             { "lbl.ver.usuario",         "User:"                                                  },
@@ -1092,6 +1409,82 @@ namespace Servicios.Multiidioma
             { "col.ver.detalle",         "Detail"                                                 },
             { "col.ver.estado",          "Status"                                                 },
             { "mnu.historialusr",        "Change History"                                         },
+            // ConfirmarAdmin messages
+            { "msg.confirmar.vacio",         "Enter username and password."                                               },
+            { "msg.confirmar.invalido",      "Invalid credentials or the user is not an Administrator."                  },
+            // VersionHistorial messages
+            { "msg.historial.sinseleccion",  "Select a version from the grid."                                           },
+            { "msg.historial.atencion",      "Attention"                                                                 },
+            { "msg.historial.confirmar",     "Restore user '{0}' to the state from {1}?\n\nSnapshot detail: {2}\n\nThis action is reversible (a new snapshot is saved before restoring)." },
+            { "msg.historial.restaurado",    "Version restored successfully."                                            },
+            // Clients — operation and deletion confirmation
+            { "msg.cli.registrado",          "Client '{0}' registered successfully."                                    },
+            { "msg.cli.actualizado",         "Client '{0}' updated."                                                    },
+            { "msg.cli.eliminado",           "Client '{0}' deleted."                                                    },
+            { "conf.baja.cli.msg",           "Deactivate {0} (DNI {1})?\n\nThis action cannot be undone."              },
+            { "conf.baja.cli.titulo",        "Confirm Deletion"                                                          },
+            { "err.cli.errorplanes",         "— Error loading plans —"                                                  },
+            // Plans — operation and confirmations
+            { "msg.planes.creado",           "Plan '{0}' created."                                                      },
+            { "msg.planes.actualizado",      "Plan '{0}' updated."                                                      },
+            { "msg.planes.desactivado",      "Plan '{0}' deactivated."                                                  },
+            { "msg.planes.reactivado",       "Plan '{0}' reactivated."                                                  },
+            { "conf.planes.desat.msg",       "Deactivate plan '{0}'?\n\nExisting clients with this plan will not be affected." },
+            { "conf.planes.desat.tit",       "Confirm Deactivation"                                                     },
+            { "conf.planes.act.msg",         "Reactivate plan '{0}'?\n\nThe plan will be available for new subscriptions again." },
+            { "conf.planes.act.tit",         "Confirm Activation"                                                       },
+            // Language management — messages
+            { "msg.idiomas.activado",        "Language activated."                                                       },
+            { "msg.idiomas.desactivado",     "Language deactivated."                                                     },
+            { "conf.idiomas.desactivar",     "Deactivate this language? Users will no longer be able to select it."    },
+            { "conf.idiomas.titulo",         "Confirm"                                                                   },
+            // Order history — restore
+            { "msg.hist.restaurado",         "Order #{0} successfully restored."                                        },
+            { "conf.hist.restaurar.msg",     "Restore order #{0} to the state before '{1}' (op. #{2})?\n\n⚠ Note: this operation modifies the Order status in the database.\nThe status of associated Garments is NOT automatically reverted.\n\nConfirm?" },
+            // Users — DV
+            { "msg.usr.dvrecalculados",      "DVH and DVV successfully recalculated for all users."                     },
+            { "msg.usr.errordv",             "Error recalculating DV: {0}"                                              },
+            // RestauracionForm — additional messages
+            { "msg.rest.dvexito",            "Check digits successfully recalculated.\nYou can now log in to the system." },
+            { "msg.rest.dvtitulo",           "Integrity Restored"                                                        },
+            { "conf.rest.sobreescribir",     "Are you sure? This operation will overwrite all current data and restart the application." },
+            { "msg.rest.errorrecalcular",    "Error recalculating: {0}"                                                  },
+            { "msg.rest.errorrestaurar",     "Error restoring: {0}"                                                      },
+            // BackupForm — catch errors
+            { "msg.backup.errorgenerar",     "Error creating backup:\n{0}"                                              },
+            { "msg.backup.erroreliminar",    "Error deleting:\n{0}"                                                      },
+            { "msg.backup.errorrestaurar",   "Error restoring:\n{0}"                                                     },
+            // VersionHistorialForm — catch errors
+            { "msg.historial.errorcargar",   "Error loading history:\n{0}"                                              },
+            { "msg.historial.errorrestaur",  "Error restoring version:\n{0}"                                            },
+            // Generic error title
+            { "msg.error.titulo",            "Error"                                                                     },
+            // Clients — subscription expiry date
+            { "lbl.cli.vencimiento",         "Expiry Date"                                                               },
+            { "col.cli.vencimiento",         "Expiry"                                                                    },
+            { "msg.cli.sinvenc",             "No expiry"                                                                 },
+            { "msg.cli.vencido",             "Expired"                                                                   },
+            { "msg.cli.vigente",             "Active"                                                                    },
+            // New Order — expired subscription + translated summary
+            { "err.ped.suscvencida",         "⚠ {0}'s subscription expired on {1}.\nUpdate in the Clients module."      },
+            { "lbl.ped.res.linea1",          "Selected: {0}  |  Already in use: {1}  |  Total: {2}"                     },
+            { "lbl.ped.res.limite",          "✗ Plan '{0}' allows {1} garment(s). You are exceeding the limit by {2}."  },
+            { "lbl.ped.res.vacio",           "You can add up to {0} garment(s) (plan {1})."                             },
+            { "lbl.ped.res.parcial",         "ℹ Plan '{0}' allows {1}. You are choosing {2} of {3} available — you can add more." },
+            { "lbl.ped.res.lleno",           "✓ You reached the plan maximum '{0}' ({1} garments)."                     },
+            { "conf.ped.titulo",             "Confirm Order"                                                             },
+            { "conf.ped.msg",                "Confirm order for {0}:\n\n  • {1}\n\nTotal: {2} garment(s)\nPayment method: {3}" },
+            // Maintenance — garment cleaning history
+            { "frm.mantenimiento",           "Maintenance History"                                                       },
+            { "btn.mantenimiento",           "🔧 Maintenance"                                                           },
+            { "col.mant.entrada",            "Check-in"                                                                  },
+            { "col.mant.salida",             "Check-out"                                                                 },
+            { "col.mant.duracion",           "Duration (days)"                                                           },
+            { "col.mant.actor",              "Handler"                                                                   },
+            { "col.mant.estado",             "Status"                                                                    },
+            { "mant.abierto",                "In Cleaning"                                                               },
+            { "mant.cerrado",                "Completed"                                                                 },
+            { "msg.mant.sinregistros",       "This garment has no maintenance history."                                  },
         });
 
         // ── Diccionario Русский (RU) ──────────────────────────────────────────
@@ -1111,6 +1504,10 @@ namespace Servicios.Multiidioma
             { "lbl.idioma",       "Язык:"                                  },
             // Вход — подзаголовок
             { "lbl.subtitulo",    "ПОРТАЛ СОТРУДНИКОВ"                     },
+            { "lbl.bienvenido",   "Добро пожаловать"                       },
+            { "lbl.credenciales", "Введите данные для входа"               },
+            { "lbl.divider",      "или"                                     },
+            { "lbl.brand.desc",   "Безопасный доступ\nко всем модулям системы." },
             // Главное меню
             { "mnu.perfil",       "Профиль"                                },
             { "mnu.inventario",   "Склад"                                  },
@@ -1164,7 +1561,8 @@ namespace Servicios.Multiidioma
             { "btn.activar",      "Активировать план"                      },
             { "lbl.planesreg",    "Зарегистрированные планы"               },
             // Журнал аудита
-            { "frm.bitacora",     "Аудит — Журналы системы"                },
+            { "frm.bitacora",            "Аудит — Журналы системы"                                    },
+            { "frm.bitacora.subtitulo", "Журнал системных событий и бизнес-операций"                 },
             { "tab.sistema",      "🔐  Системный журнал"                   },
             { "tab.negocio",      "📦  Бизнес-журнал"                      },
             { "lbl.ultimos",      "Последние"                              },
@@ -1239,6 +1637,7 @@ namespace Servicios.Multiidioma
             { "stat.intlogin",     "Попытки входа"                         },
             { "stat.recupclave",   "Сброс пароля"                          },
             { "stat.bloqueos",     "Блокировки"                            },
+            { "stat.sindatos",     "Нет данных критичности"                },
             // История изменений заказа
             { "frm.historial",        "История изменений заказа"           },
             { "lbl.hist.pedido",      "Заказ #"                            },
@@ -1329,6 +1728,11 @@ namespace Servicios.Multiidioma
             { "lbl.recup.desc",       "Введите имя пользователя. Администратор\nсможет сбросить ваш пароль через систему." },
             { "lbl.recup.usuario",    "Имя пользователя:"                  },
             { "btn.enviar.solicitud", "Отправить запрос"                   },
+            // Восстановление пароля — сообщения
+            { "err.recup.nousername",    "Введите имя пользователя."                                                      },
+            { "err.recup.nousuario",     "Пользователь '{0}' не найден.\nПроверьте правильность написания имени."        },
+            { "msg.recup.exito",         "Пользователь '{0}' найден.\nОбратитесь к администратору для сброса\nпароля через Управление → Пользователи." },
+            { "err.recup.verificar",     "Ошибка при проверке пользователя: {0}"                                         },
             // Детали заказа — столбцы одежды
             { "col.det.prenda",       "Одежда"                             },
             // PrendaForm — заголовки и метки
@@ -1524,8 +1928,110 @@ namespace Servicios.Multiidioma
             { "frm.backup",              "Резервное копирование"                                  },
             { "btn.backup.crear",        "Создать резервную копию (.bak)"                         },
             { "btn.backup.restaurar",    "Восстановить из копии (.bak)"                           },
+            { "btn.backup.eliminar",     "Удалить"                                                },
+            { "btn.backup.externo",      "Из файла..."                                            },
+            { "col.backup.archivo",      "Файл"                                                   },
+            { "col.backup.fecha",        "Дата"                                                   },
+            { "col.backup.autor",        "Автор"                                                  },
+            { "col.backup.tamanio",      "Размер"                                                 },
             { "lbl.backup.info",         "Примечание: восстановление закроет активные соединения и перезапустит приложение." },
+            { "lbl.backup.ubicacion",    "Расположение копий:"                                   },
+            { "msg.backup.tituloeliminar","Подтверждение удаления"                               },
+            { "msg.backup.confirmeliminar","Удалить резервную копию?\n\"{0}\"\n\nЭто действие нельзя отменить." },
+            { "msg.backup.titulorestaura","Подтверждение восстановления"                         },
+            { "msg.backup.confirmrestaura","Восстановить базу данных из:\n\"{0}\"?\n\nЭто перезапишет все текущие данные\nи перезапустит приложение." },
             { "mnu.backup",              "Резервная копия"                                        },
+            { "msg.backup.creadoexito",  "Резервная копия создана успешно:\n{0}"                 },
+            { "msg.backup.restauradaexito","База данных успешно восстановлена.\nПриложение перезапустится." },
+            { "msg.backup.restauradatitulo","Восстановление выполнено"                            },
+            { "lbl.backup.sincopias",    "Резервных копий нет."                                  },
+            { "lbl.backup.conteo",       "{0} резервная(ых) копия(й). Последняя: {1}"            },
+            // RestauracionForm (Целостность ЦК)
+            { "frm.restauracion",        "Целостность системы"                                    },
+            { "lbl.rest.titulo",         "Целостность системы нарушена"                           },
+            { "lbl.rest.subtitulo",      "Обнаружены расхождения в контрольных цифрах. Доступ заблокирован." },
+            { "lbl.rest.detalle",        "Детали ошибки:"                                        },
+            { "btn.rest.recalcular",     "Пересчитать контрольные цифры"                         },
+            { "btn.rest.backup",         "Восстановить из резервной копии"                        },
+            { "btn.rest.salir",          "Выйти"                                                  },
+            // Меню — Панель управления + разделённые журналы
+            { "mnu.dashboard",           "Панель управления"                                      },
+            { "mnu.bitacora.sistema",    "Системный журнал"                                       },
+            { "mnu.bitacora.negocio",    "Бизнес-журнал"                                         },
+            // Панель управления — Dashboard
+            { "frm.dashboard",           "Панель управления"                                      },
+            { "dash.prendas",            "Товаров\nдоступно"                                      },
+            { "dash.clientes",           "Клиентов\nзарегистрировано"                             },
+            { "dash.pedidos",            "Заказов\nв ожидании"                                    },
+            { "dash.backup",             "дней без\nрезервной копии"                              },
+            { "dash.btn.refrescar",      "↻ Обновить"                                             },
+            { "mnu.reportejornada",      "Отчёт за день"                                          },
+            // Отчёт за день
+            { "frm.reportejornada",      "Отчёт за день — WardrobeFlow"                           },
+            { "rpt.generar",             "Создать"                                                },
+            { "rpt.comparar",            "Сравнить дни"                                           },
+            { "rpt.exportartxt",         "Экспорт TXT"                                            },
+            { "rpt.exportarpdf",         "Экспорт PDF"                                            },
+            { "rpt.fecha",               "День:"                                                  },
+            { "rpt.fecha2",              "Сравнить с:"                                            },
+            { "rpt.kpi.prendas",         "Доступная одежда"                                       },
+            { "rpt.kpi.clientes",        "Клиентов"                                              },
+            { "rpt.kpi.eventos",         "Событий за день"                                        },
+            { "rpt.kpi.backup",          "дней без резервной копии"                               },
+            { "rpt.sinDatos",            "Нет событий за выбранный день."                         },
+            { "rpt.limpiar",             "Очистить"                                              },
+            { "rpt.subtitulo",           "Бизнес-события за день с экспортом в TXT"             },
+            // Отчёт за день — тексты сгенерированного отчёта
+            { "rpt.txt.titulo",          "ОТЧЁТ ЗА ДЕНЬ"                                        },
+            { "rpt.txt.resumen",         "СВОДКА СИСТЕМЫ"                                        },
+            { "rpt.txt.prendas",         "Доступная одежда"                                      },
+            { "rpt.txt.clientes",        "Клиентов"                                              },
+            { "rpt.txt.diassinbkp",      "Дней без резервной копии"                              },
+            { "rpt.txt.sinbackups",      "Нет резервных копий"                                   },
+            { "rpt.txt.eventos",         "БИЗНЕС-СОБЫТИЯ ЗА ДЕНЬ"                               },
+            { "rpt.txt.sinevt",          "(нет событий за эту смену)"                            },
+            { "rpt.txt.usuario",         "Пользователь"                                          },
+            { "rpt.txt.cliente",         "Клиент"                                                },
+            { "rpt.txt.totalevt",        "ВСЕГО СОБЫТИЙ"                                        },
+            { "rpt.txt.generado",        "Создан"                                                },
+            { "rpt.txt.comparacion",     "СРАВНЕНИЕ СМЕН"                                        },
+            { "rpt.txt.jornada",         "СМЕНА"                                                 },
+            { "rpt.txt.sinevtjorn",      "(нет событий за эту смену)"                            },
+            { "rpt.txt.comparfinal",     "ИТОГОВАЯ СВОДКА"                                       },
+            { "rpt.txt.fecha",           "Дата"                                                  },
+            { "rpt.txt.eventostot",      "Всего событий"                                         },
+            { "rpt.txt.masmasa",         "имела больше активности"                               },
+            { "rpt.txt.ninguna",         "Ни в одной смене событий не зарегистрировано."         },
+            { "rpt.txt.iguales",         "Обе смены имели одинаковое количество событий."        },
+            { "rpt.txt.rptoegenerado",   "Отчёт создан"                                          },
+            { "rpt.txt.compgenerada",    "Сравнение создано"                                     },
+            { "rpt.txt.impresionenv",    "Печать отправлена"                                     },
+            { "bit.pdf.titulosistema",   "Системный журнал — WardrobeFlow"                      },
+            { "bit.pdf.titulonegocio",   "Бизнес-журнал — WardrobeFlow"                        },
+            { "bit.pdf.pagina",          "WardrobeFlow — Страница {0}"                          },
+            { "bit.pdf.vistaprevia",     "Предварительный просмотр"                             },
+            { "dash.backup.hoy",         "Сегодня"                                              },
+            { "dash.sesion.iniciada",    "Сеанс начат:"                                         },
+            // Панель управления — последние события и мини-статистика
+            { "dash.actividad.titulo",  "Последние события"                                    },
+            { "dash.stats.titulo",      "Сводка событий"                                       },
+            { "dash.col.fecha",         "Дата"                                                 },
+            { "dash.col.evento",        "Событие"                                              },
+            { "dash.col.usuario",       "Пользователь"                                         },
+            // Панель управления — уведомления о резервной копии и диалог настройки
+            { "dash.aviso.sinbackup",   "⚠  Резервных копий нет. Создайте через Администрирование → Резервная копия." },
+            { "dash.aviso.vencido",     "⚠  {0} дней без резервной копии — напоминание каждые {1} дней."  },
+            { "dash.cfg.titulo",        "Напоминание о резервной копии"                                    },
+            { "dash.cfg.recada",        "Напоминать каждые:"                                               },
+            { "dash.cfg.dias",          "дней"                                                             },
+            { "dash.cfg.guardar",       "Сохранить"                                                        },
+            // Отчёт за день — меню экспорта и диалоги
+            { "rpt.menu.guardartxt",    "Сохранить как .TXT"                                               },
+            { "rpt.menu.imprimir",      "Печать / Экспорт PDF"                                             },
+            { "rpt.menu.guardarcmp",    "Сохранить сравнение как .TXT"                                     },
+            { "rpt.dlg.guardartxt",     "Сохранить как TXT"                                               },
+            { "rpt.dlg.exito.titulo",   "Успех"                                                            },
+            { "rpt.dlg.exito.msg",      "Файл сохранён:\n{0}"                                              },
             // История изменений пользователей (T06)
             { "frm.historialusr",        "История изменений пользователей"                        },
             { "lbl.ver.usuario",         "Пользователь:"                                          },
@@ -1537,6 +2043,82 @@ namespace Servicios.Multiidioma
             { "col.ver.detalle",         "Детали"                                                 },
             { "col.ver.estado",          "Состояние"                                              },
             { "mnu.historialusr",        "История изменений"                                      },
+            // Сообщения ConfirmarAdmin
+            { "msg.confirmar.vacio",         "Введите имя пользователя и пароль."                                        },
+            { "msg.confirmar.invalido",      "Неверные учётные данные или пользователь не является Администратором."    },
+            // Сообщения VersionHistorial
+            { "msg.historial.sinseleccion",  "Выберите версию из таблицы."                                               },
+            { "msg.historial.atencion",      "Внимание"                                                                  },
+            { "msg.historial.confirmar",     "Восстановить пользователя '{0}' к состоянию от {1}?\n\nДетали снимка: {2}\n\nЭто действие обратимо (новый снимок сохраняется перед восстановлением)." },
+            { "msg.historial.restaurado",    "Версия успешно восстановлена."                                             },
+            // Клиенты — операция и подтверждение удаления
+            { "msg.cli.registrado",          "Клиент '{0}' успешно зарегистрирован."                                    },
+            { "msg.cli.actualizado",         "Клиент '{0}' обновлён."                                                   },
+            { "msg.cli.eliminado",           "Клиент '{0}' удалён."                                                     },
+            { "conf.baja.cli.msg",           "Удалить клиента {0} (ИНН {1})?\n\nЭто действие нельзя отменить."         },
+            { "conf.baja.cli.titulo",        "Подтверждение удаления"                                                   },
+            { "err.cli.errorplanes",         "— Ошибка загрузки планов —"                                              },
+            // Планы — операция и подтверждения
+            { "msg.planes.creado",           "План '{0}' создан."                                                       },
+            { "msg.planes.actualizado",      "План '{0}' обновлён."                                                     },
+            { "msg.planes.desactivado",      "План '{0}' деактивирован."                                                },
+            { "msg.planes.reactivado",       "План '{0}' реактивирован."                                                },
+            { "conf.planes.desat.msg",       "Деактивировать план '{0}'?\n\nКлиенты с этим планом не пострадают."      },
+            { "conf.planes.desat.tit",       "Подтверждение деактивации"                                               },
+            { "conf.planes.act.msg",         "Реактивировать план '{0}'?\n\nПлан снова станет доступен для новых подписок." },
+            { "conf.planes.act.tit",         "Подтверждение активации"                                                  },
+            // Управление языками — сообщения
+            { "msg.idiomas.activado",        "Язык активирован."                                                        },
+            { "msg.idiomas.desactivado",     "Язык деактивирован."                                                      },
+            { "conf.idiomas.desactivar",     "Деактивировать этот язык? Пользователи не смогут его выбрать."           },
+            { "conf.idiomas.titulo",         "Подтверждение"                                                            },
+            // История заказов — восстановление
+            { "msg.hist.restaurado",         "Заказ #{0} успешно восстановлен."                                         },
+            { "conf.hist.restaurar.msg",     "Восстановить заказ #{0} к состоянию до '{1}' (оп. #{2})?\n\n⚠ Примечание: эта операция изменяет статус Заказа в базе данных.\nСтатус связанных Предметов одежды НЕ откатывается автоматически.\n\nПодтвердить?" },
+            // Пользователи — ЦК
+            { "msg.usr.dvrecalculados",      "DVH и DVV успешно пересчитаны для всех пользователей."                   },
+            { "msg.usr.errordv",             "Ошибка при пересчёте ЦК: {0}"                                            },
+            // RestauracionForm — дополнительные сообщения
+            { "msg.rest.dvexito",            "Контрольные цифры успешно пересчитаны.\nТеперь вы можете войти в систему." },
+            { "msg.rest.dvtitulo",           "Целостность восстановлена"                                                },
+            { "conf.rest.sobreescribir",     "Вы уверены? Эта операция перезапишет все текущие данные и перезапустит приложение." },
+            { "msg.rest.errorrecalcular",    "Ошибка при пересчёте: {0}"                                               },
+            { "msg.rest.errorrestaurar",     "Ошибка при восстановлении: {0}"                                          },
+            // BackupForm — ошибки в catch
+            { "msg.backup.errorgenerar",     "Ошибка при создании резервной копии:\n{0}"                               },
+            { "msg.backup.erroreliminar",    "Ошибка при удалении:\n{0}"                                               },
+            { "msg.backup.errorrestaurar",   "Ошибка при восстановлении:\n{0}"                                         },
+            // VersionHistorialForm — ошибки в catch
+            { "msg.historial.errorcargar",   "Ошибка загрузки истории:\n{0}"                                           },
+            { "msg.historial.errorrestaur",  "Ошибка восстановления версии:\n{0}"                                      },
+            // Заголовок общей ошибки
+            { "msg.error.titulo",            "Ошибка"                                                                   },
+            // Клиенты — дата истечения подписки
+            { "lbl.cli.vencimiento",         "Дата истечения"                                                           },
+            { "col.cli.vencimiento",         "Истекает"                                                                  },
+            { "msg.cli.sinvenc",             "Без ограничений"                                                          },
+            { "msg.cli.vencido",             "Истекло"                                                                   },
+            { "msg.cli.vigente",             "Активно"                                                                   },
+            // Новый заказ — истёкшая подписка + переведённое резюме
+            { "err.ped.suscvencida",         "⚠ Подписка {0} истекла {1}.\nОбновите в модуле Клиентов."               },
+            { "lbl.ped.res.linea1",          "Выбрано: {0}  |  Уже в использовании: {1}  |  Всего: {2}"               },
+            { "lbl.ped.res.limite",          "✗ План '{0}' допускает {1} ед. Вы превышаете лимит на {2}."              },
+            { "lbl.ped.res.vacio",           "Вы можете добавить до {0} ед. (план {1})."                              },
+            { "lbl.ped.res.parcial",         "ℹ План '{0}' допускает {1}. Вы выбираете {2} из {3} — можно добавить ещё." },
+            { "lbl.ped.res.lleno",           "✓ Вы достигли максимума плана '{0}' ({1} ед.)."                          },
+            { "conf.ped.titulo",             "Подтвердить заказ"                                                        },
+            { "conf.ped.msg",                "Подтвердить заказ для {0}:\n\n  • {1}\n\nВсего: {2} ед.\nМетод оплаты: {3}" },
+            // Обслуживание — история чистки одежды
+            { "frm.mantenimiento",           "История обслуживания"                                                     },
+            { "btn.mantenimiento",           "🔧 Обслуживание"                                                         },
+            { "col.mant.entrada",            "Поступление"                                                              },
+            { "col.mant.salida",             "Выдача"                                                                   },
+            { "col.mant.duracion",           "Длительность (дн.)"                                                       },
+            { "col.mant.actor",              "Ответственный"                                                            },
+            { "col.mant.estado",             "Статус"                                                                   },
+            { "mant.abierto",                "На чистке"                                                                },
+            { "mant.cerrado",                "Завершено"                                                                },
+            { "msg.mant.sinregistros",       "У этой вещи нет истории обслуживания."                                   },
         });
 
         // ── Constructor de diccionario ────────────────────────────────────────

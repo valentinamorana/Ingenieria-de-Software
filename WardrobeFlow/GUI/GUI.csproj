@@ -119,6 +119,12 @@
     <Compile Include="Bitacora.Designer.cs">
       <DependentUpon>Bitacora.cs</DependentUpon>
     </Compile>
+    <Compile Include="ReporteJornadaForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ReporteJornadaForm.Designer.cs">
+      <DependentUpon>ReporteJornadaForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="BackupForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -148,6 +154,12 @@
     </Compile>
     <Compile Include="VersionHistorialForm.Designer.cs">
       <DependentUpon>VersionHistorialForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="MantenimientoHistorialForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MantenimientoHistorialForm.Designer.cs">
+      <DependentUpon>MantenimientoHistorialForm.cs</DependentUpon>
     </Compile>
     <Compile Include="Prendas.cs">
       <SubType>Form</SubType>
@@ -268,6 +280,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\3106921[1].png" />
+    <Content Include="icon.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

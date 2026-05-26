@@ -96,7 +96,8 @@ namespace GUI
             RH("Plan",       "col.cli.plan",       "Plan");
             RH("Prendas",    "col.cli.prendas",    "Prendas");
             RH("MetodoPago", "col.cli.metodopago", "Método de Pago");
-            RH("Alta",       "col.cli.alta",       "Alta");
+            RH("Alta",        "col.cli.alta",        "Alta");
+            RH("Vencimiento", "col.cli.vencimiento", "Vencimiento");
         }
 
         private static void Aplicar(Control c, IDictionary<string, Traduccion> t)
@@ -170,19 +171,32 @@ namespace GUI
             var t = Traductor.ObtenerTraducciones(_idioma);
             string sinPlan = t.ContainsKey("lbl.sinplan") ? t["lbl.sinplan"].Texto : "Sin plan";
 
+            string sinVenc = t.ContainsKey("msg.cli.sinvenc") ? t["msg.cli.sinvenc"].Texto : "—";
+            string vencido = t.ContainsKey("msg.cli.vencido") ? t["msg.cli.vencido"].Texto : "Vencido";
+
             var tabla = new DataTable();
-            tabla.Columns.Add("ID",         typeof(int));
-            tabla.Columns.Add("Nombre",     typeof(string));
-            tabla.Columns.Add("Apellido",   typeof(string));
-            tabla.Columns.Add("DNI",        typeof(string));
-            tabla.Columns.Add("Email",      typeof(string));
-            tabla.Columns.Add("Plan",       typeof(string));
-            tabla.Columns.Add("Prendas",    typeof(int));
-            tabla.Columns.Add("MetodoPago", typeof(string));
-            tabla.Columns.Add("Alta",       typeof(string));
+            tabla.Columns.Add("ID",          typeof(int));
+            tabla.Columns.Add("Nombre",      typeof(string));
+            tabla.Columns.Add("Apellido",    typeof(string));
+            tabla.Columns.Add("DNI",         typeof(string));
+            tabla.Columns.Add("Email",       typeof(string));
+            tabla.Columns.Add("Plan",        typeof(string));
+            tabla.Columns.Add("Prendas",     typeof(int));
+            tabla.Columns.Add("MetodoPago",  typeof(string));
+            tabla.Columns.Add("Alta",        typeof(string));
+            tabla.Columns.Add("Vencimiento", typeof(string));
+            tabla.Columns.Add("_Vencido",    typeof(bool));
 
             foreach (var c in lista)
             {
+                bool expirado = c.FechaVencimiento.HasValue &&
+                                c.FechaVencimiento.Value.Date < DateTime.Today;
+                string vencStr = c.FechaVencimiento.HasValue
+                    ? (expirado
+                        ? $"⚠ {c.FechaVencimiento.Value:dd/MM/yyyy} ({vencido})"
+                        : c.FechaVencimiento.Value.ToString("dd/MM/yyyy"))
+                    : sinVenc;
+
                 tabla.Rows.Add(
                     c.IdCliente,
                     c.Nombre,
@@ -192,10 +206,22 @@ namespace GUI
                     c.NombrePlan ?? sinPlan,
                     c.StockUtilizado,
                     c.MetodoPago,
-                    c.FechaAlta.ToString("dd/MM/yyyy"));
+                    c.FechaAlta.ToString("dd/MM/yyyy"),
+                    vencStr,
+                    expirado);
             }
 
             dgvClientes.DataSource = tabla;
+
+            // Ocultar columna auxiliar y colorear filas vencidas
+            if (dgvClientes.Columns.Contains("_Vencido"))
+                dgvClientes.Columns["_Vencido"].Visible = false;
+
+            foreach (DataGridViewRow row in dgvClientes.Rows)
+            {
+                if (row.Cells["_Vencido"].Value is bool exp && exp)
+                    row.DefaultCellStyle.ForeColor = Color.DarkRed;
+            }
 
             // Ajustar columnas
             if (dgvClientes.Columns.Contains("ID"))
@@ -219,7 +245,9 @@ namespace GUI
                 try
                 {
                     clienteBLL.Alta(this.Text, form.ClienteEditado);
-                    MostrarOk($"Cliente '{form.ClienteEditado.NombreCompleto}' registrado correctamente.");
+                    var t = Traductor.ObtenerTraducciones(_idioma);
+                    string fmt = t.ContainsKey("msg.cli.registrado") ? t["msg.cli.registrado"].Texto : "Cliente '{0}' registrado correctamente.";
+                    MostrarOk(string.Format(fmt, form.ClienteEditado.NombreCompleto));
                     CargarClientes();
                 }
                 catch (Exception ex)
@@ -243,7 +271,9 @@ namespace GUI
                     form.ClienteEditado.StockUtilizado = cliente.StockUtilizado;
 
                     clienteBLL.Modificar(this.Text, form.ClienteEditado);
-                    MostrarOk($"Cliente '{form.ClienteEditado.NombreCompleto}' actualizado.");
+                    var t = Traductor.ObtenerTraducciones(_idioma);
+                    string fmt = t.ContainsKey("msg.cli.actualizado") ? t["msg.cli.actualizado"].Texto : "Cliente '{0}' actualizado.";
+                    MostrarOk(string.Format(fmt, form.ClienteEditado.NombreCompleto));
                     CargarClientes();
                 }
                 catch (Exception ex)
@@ -258,10 +288,13 @@ namespace GUI
             var cliente = ObtenerClienteSeleccionado();
             if (cliente == null) return;
 
+            var t = Traductor.ObtenerTraducciones(_idioma);
+            string T(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
+
             var confirmacion = MessageBox.Show(
-                $"¿Dar de baja a {cliente.NombreCompleto} (DNI {cliente.DNI})?\n\n" +
-                "Esta acción no se puede deshacer.",
-                "Confirmar Baja",
+                string.Format(T("conf.baja.cli.msg", "¿Dar de baja a {0} (DNI {1})?\n\nEsta acción no se puede deshacer."),
+                    cliente.NombreCompleto, cliente.DNI),
+                T("conf.baja.cli.titulo", "Confirmar Baja"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2);
@@ -271,7 +304,8 @@ namespace GUI
             try
             {
                 clienteBLL.Baja(this.Text, cliente);
-                MostrarOk($"Cliente '{cliente.NombreCompleto}' eliminado.");
+                string fmt = T("msg.cli.eliminado", "Cliente '{0}' eliminado.");
+                MostrarOk(string.Format(fmt, cliente.NombreCompleto));
                 CargarClientes();
             }
             catch (Exception ex)

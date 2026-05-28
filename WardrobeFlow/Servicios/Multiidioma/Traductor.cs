@@ -11,9 +11,10 @@ namespace Servicios.Multiidioma
     ///
     /// Idiomas soportados: Español (ES), English (EN), Русский (RU).
     ///
-    /// Para agregar un nuevo idioma:
-    ///   1. Agregar una entrada en ObtenerIdiomas().
-    ///   2. Agregar un nuevo case en ObtenerTraducciones() con su diccionario.
+    /// Para agregar un nuevo idioma sin cambiar código:
+    ///   1. Insertar la fila en la tabla Idioma de la BD (Codigo, Nombre, Activo=1).
+    ///   2. Insertar sus traducciones en la tabla Traduccion vía el módulo Idiomas.
+    ///   La app carga los idiomas activos desde BD al iniciar y construye los botones dinámicamente.
     ///
     /// Claves de traducción (se asignan como Tag de cada control en el formulario):
     ///   frm.login           → título del formulario Login
@@ -38,8 +39,16 @@ namespace Servicios.Multiidioma
     {
         // ── Idiomas disponibles ───────────────────────────────────────────────
 
-        /// <summary>Devuelve la lista de idiomas soportados por el sistema.</summary>
+        /// <summary>Devuelve la lista de idiomas activos: desde BD si está disponible, o hardcodeada como fallback.</summary>
         public static IList<Idioma> ObtenerIdiomas()
+        {
+            var cache = GestorIdioma.IdiomasDisponibles;
+            if (cache != null && cache.Count > 0) return cache;
+            return ObtenerIdiomasHardcode();
+        }
+
+        /// <summary>Lista de idiomas hardcodeada — usada como fallback y durante el seeding inicial.</summary>
+        public static IList<Idioma> ObtenerIdiomasHardcode()
         {
             return new List<Idioma>
             {
@@ -52,7 +61,7 @@ namespace Servicios.Multiidioma
         /// <summary>Devuelve el idioma marcado como predeterminado (Español).</summary>
         public static Idioma ObtenerIdiomaDefault()
         {
-            foreach (var i in ObtenerIdiomas())
+            foreach (var i in ObtenerIdiomasHardcode())
                 if (i.EsDefault) return i;
             return null;
         }
@@ -215,7 +224,8 @@ namespace Servicios.Multiidioma
                 clave == "lnk.olvide"     || clave == "lbl.idioma"      ||
                 clave == "lbl.subtitulo"  || clave == "lbl.iniciarsesion" ||
                 clave == "lbl.bienvenido" || clave == "lbl.credenciales" ||
-                clave == "lbl.divider"    || clave == "lbl.brand.desc") return "Login";
+                clave == "lbl.divider"    || clave == "lbl.brand.desc"  ||
+                clave.StartsWith("err.login.") || clave.StartsWith("dlg.login.")) return "Login";
             if (clave.StartsWith("msg.modulo.") || clave == "lbl.proximamente") return "Menu";
             return "General";
         }
@@ -241,6 +251,14 @@ namespace Servicios.Multiidioma
             { "lbl.credenciales", "Ingresá tus credenciales para continuar" },
             { "lbl.divider",      "o"                              },
             { "lbl.brand.desc",   "Acceso seguro y centralizado\na todos los módulos del sistema." },
+            // Login — errores de autenticación
+            { "err.login.camposvacio",   "Usuario y contraseña son obligatorios."                                    },
+            { "err.login.credenciales",  "Usuario o contraseña incorrectos."                                         },
+            { "err.login.intentos",      "Usuario o contraseña incorrectos.\nIntentos restantes: {0}."               },
+            { "err.login.bloqueada",     "La cuenta está bloqueada.\nContactá al Administrador para reactivarla."    },
+            { "err.login.limitesesion",  "Demasiados intentos fallidos en esta sesión."                              },
+            { "dlg.login.sesion.titulo", "Sesión terminada"                                                          },
+            { "dlg.login.sesion.cierre", "La aplicación se cerrará."                                                 },
             // Menú principal
             { "mnu.perfil",       "Perfil"                         },
             { "mnu.inventario",   "Inventario"                     },
@@ -612,6 +630,8 @@ namespace Servicios.Multiidioma
             { "err.recup.verificar",     "Error al verificar el usuario: {0}"                    },
             // Usuarios — mensajes de operación
             { "msg.usr.creado",          "Usuario '{0}' [{1}] creado correctamente."              },
+            { "msg.usr.creado.exportado","Usuario '{0}' [{1}] creado.\nCredenciales guardadas en:\n{2}" },
+            { "msg.usr.clave.exportada", "Contraseña de '{0}' regenerada automáticamente.\nCredenciales guardadas en:\n{1}" },
             { "err.usr.selecciona",      "Seleccioná un usuario de la lista."                     },
             { "dlg.resetclave.prompt",   "Nueva contraseña para '{0}' (mínimo 6 caracteres):"     },
             { "msg.usr.clave.reseteada", "Contraseña de '{0}' reseteada correctamente."           },
@@ -853,6 +873,31 @@ namespace Servicios.Multiidioma
             { "mant.abierto",                "En limpieza"                                                               },
             { "mant.cerrado",                "Finalizado"                                                                },
             { "msg.mant.sinregistros",       "Esta prenda no tiene historial de mantenimiento."                         },
+            // Errores de validación BLL — traducibles vía AppException
+            { "err.bll.cliente.nombre_requerido",   "El nombre del cliente es obligatorio."                                      },
+            { "err.bll.cliente.apellido_requerido",  "El apellido del cliente es obligatorio."                                   },
+            { "err.bll.cliente.dni_requerido",       "El DNI del cliente es obligatorio."                                        },
+            { "err.bll.cliente.dni_formato",         "El DNI debe tener entre 7 y 8 dígitos."                                    },
+            { "err.bll.cliente.dni_numeros",         "El DNI solo puede contener números."                                       },
+            { "err.bll.cliente.dni_duplicado",       "Ya existe un cliente con DNI {0}."                                         },
+            { "err.bll.cliente.dni_duplicado_otro",  "El DNI {0} ya está registrado para otro cliente."                         },
+            { "err.bll.cliente.baja_prendas",        "No se puede eliminar a {0}: tiene {1} prenda(s) en uso. Registrá la devolución primero." },
+            { "err.bll.pedido.sin_prendas",          "Debe seleccionar al menos una prenda."                                     },
+            { "err.bll.pedido.cliente_inexistente",  "El cliente seleccionado no existe."                                        },
+            { "err.bll.pedido.sin_plan",             "El cliente {0} no tiene plan asignado. Asignale un plan antes de crear un pedido." },
+            { "err.bll.pedido.suscripcion_vencida",  "La suscripción de {0} venció el {1}. Renovar en el módulo de Clientes."   },
+            { "err.bll.pedido.limite_plan",          "El plan '{0}' permite {1} prenda(s). El cliente ya tiene {2} en uso y agrega {3} más. Máximo posible: {4}." },
+            { "err.bll.pedido.prenda_no_disponible", "La prenda '{0}' ya no está disponible (estado: {1}). Actualizá la selección." },
+            { "err.bll.pedido.despachar_estado",     "Solo se pueden despachar pedidos Pendientes. Este pedido está '{0}'."      },
+            { "err.bll.pedido.entregar_estado",      "Solo se pueden marcar como entregados los pedidos Despachados. Este pedido está '{0}'." },
+            { "err.bll.pedido.devolucion_estado",    "Solo se puede registrar la devolución de pedidos ya Entregados. Este pedido está '{0}'." },
+            { "err.bll.pedido.cancelar_estado",      "Solo se pueden cancelar pedidos en estado Pendiente. Este pedido está '{0}'." },
+            { "err.bll.pedido.cancelar_sin_motivo",  "Es obligatorio ingresar un motivo de cancelación."                        },
+            { "err.bll.pedido.descancelar_estado",   "Solo se pueden des-cancelar pedidos Cancelados. Este pedido está '{0}'."  },
+            { "err.bll.pedido.descancelar_prendas",  "No se puede des-cancelar el Pedido #{0}. Una o más prendas ya no están disponibles." },
+            { "err.bll.plan.nombre_requerido",       "El nombre del plan es obligatorio."                                        },
+            { "err.bll.plan.limite_invalido",        "El límite de prendas debe ser mayor que cero."                             },
+            { "err.bll.plan.precio_negativo",        "El precio no puede ser negativo."                                          },
         });
 
         // ── Diccionario English (EN) ──────────────────────────────────────────
@@ -876,6 +921,14 @@ namespace Servicios.Multiidioma
             { "lbl.credenciales", "Enter your credentials to continue" },
             { "lbl.divider",      "or"                              },
             { "lbl.brand.desc",   "Secure and centralized access\nto all system modules." },
+            // Login — authentication errors
+            { "err.login.camposvacio",   "Username and password are required."                                        },
+            { "err.login.credenciales",  "Incorrect username or password."                                            },
+            { "err.login.intentos",      "Incorrect username or password.\nAttempts remaining: {0}."                  },
+            { "err.login.bloqueada",     "Your account is locked.\nContact the Administrator to reactivate it."       },
+            { "err.login.limitesesion",  "Too many failed attempts in this session."                                   },
+            { "dlg.login.sesion.titulo", "Session ended"                                                               },
+            { "dlg.login.sesion.cierre", "The application will close."                                                 },
             // Main menu
             { "mnu.perfil",       "Profile"                         },
             { "mnu.inventario",   "Inventory"                       },
@@ -1247,6 +1300,8 @@ namespace Servicios.Multiidioma
             { "err.ped.sinplan",         "⚠ {0} has no plan assigned.\nAssign a plan in the Clients module before creating an order." },
             // Users — operation messages
             { "msg.usr.creado",          "User '{0}' [{1}] created successfully."              },
+            { "msg.usr.creado.exportado","User '{0}' [{1}] created.\nCredentials saved to:\n{2}" },
+            { "msg.usr.clave.exportada", "Password for '{0}' auto-generated.\nCredentials saved to:\n{1}" },
             { "err.usr.selecciona",      "Select a user from the list."                        },
             { "dlg.resetclave.prompt",   "New password for '{0}' (minimum 6 characters):"      },
             { "msg.usr.clave.reseteada", "Password for '{0}' reset successfully."              },
@@ -1488,6 +1543,31 @@ namespace Servicios.Multiidioma
             { "mant.abierto",                "In Cleaning"                                                               },
             { "mant.cerrado",                "Completed"                                                                 },
             { "msg.mant.sinregistros",       "This garment has no maintenance history."                                  },
+            // BLL validation errors — translatable via AppException
+            { "err.bll.cliente.nombre_requerido",   "Customer first name is required."                                          },
+            { "err.bll.cliente.apellido_requerido",  "Customer last name is required."                                          },
+            { "err.bll.cliente.dni_requerido",       "Customer ID number is required."                                          },
+            { "err.bll.cliente.dni_formato",         "ID number must be 7 or 8 digits."                                         },
+            { "err.bll.cliente.dni_numeros",         "ID number can only contain digits."                                       },
+            { "err.bll.cliente.dni_duplicado",       "A customer with ID {0} already exists."                                   },
+            { "err.bll.cliente.dni_duplicado_otro",  "ID {0} is already registered to another customer."                        },
+            { "err.bll.cliente.baja_prendas",        "Cannot delete {0}: they have {1} garment(s) in use. Register the return first." },
+            { "err.bll.pedido.sin_prendas",          "You must select at least one garment."                                    },
+            { "err.bll.pedido.cliente_inexistente",  "The selected customer does not exist."                                    },
+            { "err.bll.pedido.sin_plan",             "Customer {0} has no plan assigned. Assign a plan before creating an order." },
+            { "err.bll.pedido.suscripcion_vencida",  "Subscription for {0} expired on {1}. Renew in the Customers module."     },
+            { "err.bll.pedido.limite_plan",          "Plan '{0}' allows {1} garment(s). Customer already has {2} in use and is adding {3} more. Maximum allowed: {4}." },
+            { "err.bll.pedido.prenda_no_disponible", "Garment '{0}' is no longer available (status: {1}). Update your selection." },
+            { "err.bll.pedido.despachar_estado",     "Only Pending orders can be dispatched. This order is '{0}'."              },
+            { "err.bll.pedido.entregar_estado",      "Only Dispatched orders can be marked as Delivered. This order is '{0}'." },
+            { "err.bll.pedido.devolucion_estado",    "Returns can only be registered for Delivered orders. This order is '{0}'." },
+            { "err.bll.pedido.cancelar_estado",      "Only Pending orders can be cancelled. This order is '{0}'."               },
+            { "err.bll.pedido.cancelar_sin_motivo",  "A cancellation reason is required."                                      },
+            { "err.bll.pedido.descancelar_estado",   "Only Cancelled orders can be un-cancelled. This order is '{0}'."         },
+            { "err.bll.pedido.descancelar_prendas",  "Cannot un-cancel Order #{0}. One or more garments are no longer available." },
+            { "err.bll.plan.nombre_requerido",       "Plan name is required."                                                   },
+            { "err.bll.plan.limite_invalido",        "Garment limit must be greater than zero."                                 },
+            { "err.bll.plan.precio_negativo",        "Price cannot be negative."                                                },
         });
 
         // ── Diccionario Русский (RU) ──────────────────────────────────────────
@@ -1511,6 +1591,14 @@ namespace Servicios.Multiidioma
             { "lbl.credenciales", "Введите данные для входа"               },
             { "lbl.divider",      "или"                                     },
             { "lbl.brand.desc",   "Безопасный доступ\nко всем модулям системы." },
+            // Вход — ошибки аутентификации
+            { "err.login.camposvacio",   "Имя пользователя и пароль обязательны."                                    },
+            { "err.login.credenciales",  "Неверное имя пользователя или пароль."                                     },
+            { "err.login.intentos",      "Неверное имя пользователя или пароль.\nОсталось попыток: {0}."             },
+            { "err.login.bloqueada",     "Аккаунт заблокирован.\nОбратитесь к Администратору для разблокировки."     },
+            { "err.login.limitesesion",  "Слишком много неудачных попыток в этом сеансе."                            },
+            { "dlg.login.sesion.titulo", "Сеанс завершён"                                                            },
+            { "dlg.login.sesion.cierre", "Приложение будет закрыто."                                                 },
             // Главное меню
             { "mnu.perfil",       "Профиль"                                },
             { "mnu.inventario",   "Склад"                                  },
@@ -1882,6 +1970,8 @@ namespace Servicios.Multiidioma
             { "err.ped.sinplan",         "⚠ У {0} не назначен план.\nНазначьте план в модуле Клиентов перед созданием заказа." },
             // Пользователи — сообщения об операциях
             { "msg.usr.creado",          "Пользователь '{0}' [{1}] успешно создан."             },
+            { "msg.usr.creado.exportado","Пользователь '{0}' [{1}] создан.\nУчётные данные сохранены в:\n{2}" },
+            { "msg.usr.clave.exportada", "Пароль '{0}' сгенерирован автоматически.\nУчётные данные сохранены в:\n{1}" },
             { "err.usr.selecciona",      "Выберите пользователя из списка."                     },
             { "dlg.resetclave.prompt",   "Новый пароль для '{0}' (минимум 6 символов):"         },
             { "msg.usr.clave.reseteada", "Пароль для '{0}' успешно сброшен."                    },
@@ -2123,6 +2213,31 @@ namespace Servicios.Multiidioma
             { "mant.abierto",                "На чистке"                                                                },
             { "mant.cerrado",                "Завершено"                                                                },
             { "msg.mant.sinregistros",       "У этой вещи нет истории обслуживания."                                   },
+            // Ошибки валидации BLL — переводимые через AppException
+            { "err.bll.cliente.nombre_requerido",   "Имя клиента обязательно."                                                  },
+            { "err.bll.cliente.apellido_requerido",  "Фамилия клиента обязательна."                                             },
+            { "err.bll.cliente.dni_requerido",       "Номер удостоверения личности клиента обязателен."                         },
+            { "err.bll.cliente.dni_formato",         "Номер удостоверения должен содержать от 7 до 8 цифр."                     },
+            { "err.bll.cliente.dni_numeros",         "Номер удостоверения может содержать только цифры."                        },
+            { "err.bll.cliente.dni_duplicado",       "Клиент с удостоверением {0} уже существует."                              },
+            { "err.bll.cliente.dni_duplicado_otro",  "Удостоверение {0} уже зарегистрировано для другого клиента."             },
+            { "err.bll.cliente.baja_prendas",        "Невозможно удалить {0}: у них {1} вещь(ей) в использовании. Сначала зарегистрируйте возврат." },
+            { "err.bll.pedido.sin_prendas",          "Необходимо выбрать хотя бы одну вещь."                                   },
+            { "err.bll.pedido.cliente_inexistente",  "Выбранный клиент не существует."                                          },
+            { "err.bll.pedido.sin_plan",             "У клиента {0} нет назначенного плана. Назначьте план перед созданием заказа." },
+            { "err.bll.pedido.suscripcion_vencida",  "Подписка {0} истекла {1}. Обновите в модуле Клиентов."                   },
+            { "err.bll.pedido.limite_plan",          "План '{0}' разрешает {1} вещь(ей). У клиента уже {2} в использовании, добавляется ещё {3}. Максимум: {4}." },
+            { "err.bll.pedido.prenda_no_disponible", "Вещь '{0}' недоступна (статус: {1}). Обновите выбор."                    },
+            { "err.bll.pedido.despachar_estado",     "Отправить можно только заказы в статусе Ожидания. Этот заказ: '{0}'."    },
+            { "err.bll.pedido.entregar_estado",      "Отметить доставленным можно только Отправленные заказы. Этот заказ: '{0}'." },
+            { "err.bll.pedido.devolucion_estado",    "Возврат можно зарегистрировать только для Доставленных заказов. Этот заказ: '{0}'." },
+            { "err.bll.pedido.cancelar_estado",      "Отменить можно только заказы в статусе Ожидания. Этот заказ: '{0}'."     },
+            { "err.bll.pedido.cancelar_sin_motivo",  "Необходимо указать причину отмены."                                      },
+            { "err.bll.pedido.descancelar_estado",   "Восстановить можно только Отменённые заказы. Этот заказ: '{0}'."         },
+            { "err.bll.pedido.descancelar_prendas",  "Невозможно восстановить Заказ #{0}. Одна или несколько вещей больше недоступны." },
+            { "err.bll.plan.nombre_requerido",       "Название плана обязательно."                                              },
+            { "err.bll.plan.limite_invalido",        "Лимит вещей должен быть больше нуля."                                    },
+            { "err.bll.plan.precio_negativo",        "Цена не может быть отрицательной."                                       },
         });
 
         // ── Constructor de diccionario ────────────────────────────────────────

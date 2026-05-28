@@ -32,6 +32,16 @@ namespace BLL
             return dalIdioma.ObtenerActivos();
         }
 
+        // Devuelve los idiomas activos ya convertidos al tipo que usa el sistema de idiomas.
+        // Centraliza el mapeo BE.Idioma → Servicios.Multiidioma.Idioma para que la GUI no lo haga.
+        public List<Idioma> ObtenerIdiomasActivosComoIdioma()
+        {
+            var resultado = new List<Idioma>();
+            foreach (var b in dalIdioma.ObtenerActivos())
+                resultado.Add(new Idioma { Id = b.Codigo, Nombre = b.Nombre, EsDefault = b.EsDefault });
+            return resultado;
+        }
+
         public List<BE.Idioma> ObtenerTodosLosIdiomas()
         {
             return dalIdioma.ObtenerTodos();
@@ -66,7 +76,7 @@ namespace BLL
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[BLL.Idioma.CargarTraducciones] {ex.Message}");
+                System.Diagnostics.Trace.TraceError($"[BLL.Idioma.CargarTraducciones] {ex.Message}");
                 return new Dictionary<string, string>();
             }
         }
@@ -111,7 +121,7 @@ namespace BLL
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[BLL.Idioma.SeedearDesdeHardcode] {ex.Message}");
+                System.Diagnostics.Trace.TraceError($"[BLL.Idioma.SeedearDesdeHardcode] {ex.Message}");
                 throw;
             }
         }

@@ -85,7 +85,45 @@ namespace GUI
             Aplicar(lblDesbloquearInfo,   t);
             Aplicar(btnDesbloquear,       t);
             Aplicar(lblListaTitulo,       t);
+            RellenarComboPerfil(t);
             TraducirHeadersGrilla();
+        }
+
+        // Recarga cmbPerfil con etiquetas traducidas manteniendo los valores internos (DB keys).
+        private void RellenarComboPerfil(IDictionary<string, Servicios.Multiidioma.Traduccion> t)
+        {
+            string TT(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
+
+            var items = new[]
+            {
+                // Roles de la jerarquía nueva (T04)
+                new PerfilItem("Administrador",       TT("perfil.administrador",       "Administrador")),
+                new PerfilItem("Auditor",             TT("perfil.auditor",             "Auditor")),
+                new PerfilItem("GerenteComercial",    TT("perfil.gerentecomercial",    "Gerente Comercial")),
+                new PerfilItem("Vendedor",            TT("perfil.vendedor",            "Vendedor")),
+                new PerfilItem("GerenteInventario",   TT("perfil.gerenteinventario",   "Gerente de Inventario")),
+                new PerfilItem("EncargadoDeStock",    TT("perfil.encargadodestock",    "Encargado de Stock")),
+                new PerfilItem("OperadorLogistico",   TT("perfil.operadorlogistico",   "Operador Logístico")),
+                // Roles legacy (mantenidos por compatibilidad)
+                new PerfilItem("Supervisor",          TT("perfil.supervisor",          "Supervisor (legacy)")),
+                new PerfilItem("ControladorDeStock",  TT("perfil.stock",               "Controlador de Stock (legacy)")),
+                new PerfilItem("OperadorDeInventario",TT("perfil.operador",            "Operador de Inventario (legacy)")),
+            };
+
+            int prevIdx = cmbPerfil.SelectedIndex < 0 ? 2 : cmbPerfil.SelectedIndex;
+            cmbPerfil.DataSource    = null;
+            cmbPerfil.DisplayMember = "Label";
+            cmbPerfil.ValueMember   = "Value";
+            cmbPerfil.DataSource    = items;
+            cmbPerfil.SelectedIndex = prevIdx < items.Length ? prevIdx : 2;
+        }
+
+        private class PerfilItem
+        {
+            public string Value { get; }
+            public string Label { get; }
+            public PerfilItem(string value, string label) { Value = value; Label = label; }
+            public override string ToString() => Label;
         }
 
         /// <summary>Traduce los HeaderText de la grilla de usuarios según el idioma activo.</summary>
@@ -246,7 +284,7 @@ namespace GUI
         private void BtnAgregar_Click(object sender, EventArgs e)
         {
             string username = txtUsername.Text.Trim();
-            string perfil   = cmbPerfil.SelectedItem?.ToString() ?? "";
+            string perfil   = (cmbPerfil.SelectedItem as PerfilItem)?.Value ?? cmbPerfil.SelectedItem?.ToString() ?? "";
 
             try
             {

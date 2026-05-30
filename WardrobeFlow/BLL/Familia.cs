@@ -57,7 +57,49 @@ namespace BLL
             foreach (var nodo in arbol)
                 raiz.AgregarHijo(nodo);
 
+            // T04 — verificar que el árbol cargado no tenga ciclos (datos corruptos en BD).
+            VerificarSinCiclos(raiz);
+
             return raiz;
+        }
+
+        // T04 — Recorre el árbol completo buscando referencias circulares.
+        // Usa DFS con un set de visitados en el camino actual.
+        // Lanza InvalidOperationException describiendo el ciclo encontrado.
+        public void VerificarSinCiclos(BE.Familia raiz)
+        {
+            var enCamino = new HashSet<int>();
+            var camino   = new System.Collections.Generic.Stack<string>();
+            VerificarRecursivo(raiz, enCamino, camino);
+        }
+
+        private void VerificarRecursivo(BE.Componente nodo,
+                                        HashSet<int> enCamino,
+                                        System.Collections.Generic.Stack<string> camino)
+        {
+            // Los nodos raíz virtuales (Id=0) no se registran para evitar falsos positivos.
+            if (nodo.Id != 0)
+            {
+                if (enCamino.Contains(nodo.Id))
+                {
+                    var ruta = new System.Collections.Generic.List<string>(camino) { nodo.Nombre };
+                    ruta.Reverse();
+                    throw new InvalidOperationException(
+                        $"Referencia circular detectada en el árbol de permisos: " +
+                        string.Join(" → ", ruta));
+                }
+                enCamino.Add(nodo.Id);
+                camino.Push(nodo.Nombre);
+            }
+
+            foreach (var hijo in nodo.Hijos)
+                VerificarRecursivo(hijo, enCamino, camino);
+
+            if (nodo.Id != 0)
+            {
+                enCamino.Remove(nodo.Id);
+                camino.Pop();
+            }
         }
 
         private void MarcarAsignados(IList<BE.Componente> nodos, HashSet<int> ids)
@@ -89,6 +131,79 @@ namespace BLL
             _bitacora.Registrar("Gestión de Perfiles",
                 $"Permiso {idPermiso} quitado del rol '{rol}'",
                 BE.Criticidad.Alta);
+        }
+
+        // T04 — Construye el árbol de jerarquía de roles desde la tabla [RolJerarquia].
+        // Retorna nodos raíz (sin padre). Cada nodo tiene Hijos recursivos.
+        // Si la tabla no existe (migración no aplicada), retorna una lista con los roles actuales como nodos planos.
+        public List<BE.JerarquiaRol> ObtenerArbolJerarquiaRoles()
+        {
+            List<BE.JerarquiaRol> todos;
+
+            if (!permisoDAL.ExisteTablaJerarquia())
+            {
+                // Fallback: construir jerarquía plana desde los roles existentes en RolPermiso
+                todos = new List<BE.JerarquiaRol>();
+                foreach (string rol in permisoDAL.ObtenerRoles())
+                    todos.Add(new BE.JerarquiaRol { Rol = rol, RolPadre = null, Nivel = 0, Area = "Roles" });
+            }
+            else
+            {
+                todos = permisoDAL.ObtenerJerarquiaRoles();
+            }
+
+            // Indexar por nombre de rol
+            var byRol = new Dictionary<string, BE.JerarquiaRol>(StringComparer.OrdinalIgnoreCase);
+            foreach (var r in todos)
+                byRol[r.Rol] = r;
+
+            // Vincular hijos con padres
+            var raices = new List<BE.JerarquiaRol>();
+            foreach (var r in todos)
+            {
+                if (r.RolPadre == null || !byRol.ContainsKey(r.RolPadre))
+                    raices.Add(r);
+                else
+                    byRol[r.RolPadre].Hijos.Add(r);
+            }
+
+            return raices;
+        }
+
+        // T04 — Devuelve los nombres de menú (NombreMenu) que el rol recibe por herencia de su padre.
+        // Permite mostrar permisos heredados en el TreeView con distinto color.
+        public List<string> ObtenerPermisosHeredados(string rol)
+        {
+            var heredados = new List<string>();
+            if (!permisoDAL.ExisteTablaJerarquia()) return heredados;
+
+            try
+            {
+                var todos  = permisoDAL.ObtenerJerarquiaRoles();
+                var byRol  = new Dictionary<string, BE.JerarquiaRol>(StringComparer.OrdinalIgnoreCase);
+                foreach (var r in todos) byRol[r.Rol] = r;
+
+                // Subir por la cadena de padres
+                string actual = rol;
+                var visitados = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                while (actual != null && !visitados.Contains(actual))
+                {
+                    visitados.Add(actual);
+                    if (byRol.TryGetValue(actual, out var nodo) && nodo.RolPadre != null)
+                    {
+                        actual = nodo.RolPadre;
+                        foreach (var p in permisoDAL.ObtenerPorRol(actual))
+                            if (!string.IsNullOrEmpty(p.NombreMenu) && !heredados.Contains(p.NombreMenu))
+                                heredados.Add(p.NombreMenu);
+                    }
+                    else break;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceWarning($"[BLL.Familia.ObtenerPermisosHeredados] {ex.Message}");
+            }
+            return heredados;
         }
     }
 }

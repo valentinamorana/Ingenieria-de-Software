@@ -12,8 +12,9 @@ namespace BLL
         private readonly DAL.Permiso        permisoDAL = new DAL.Permiso();
         private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
 
-        private const int    MaxIntentosFallidos = 3;
+        private const int    MaxIntentosFallidos  = 3;
         private const string RolAdministrador    = "Administrador";
+        private const string ClaveTemporalDefault = "Wardrobe1!";
 
         /// <summary>Autentica al usuario y establece la sesión. Bloquea la cuenta tras 3 intentos fallidos.</summary>
         public bool Login(string modulo, string username, string contraseña)
@@ -87,14 +88,26 @@ namespace BLL
         // Devuelve la ruta del archivo de credenciales generado.
         public string Alta(string modulo, string username, string perfil)
         {
+            if (!SessionManager.IsLoggedIn)
+                throw new BE.AppException("err.bll.sesion_expirada",
+                    "La sesión expiró. Volvé a iniciar sesión.");
+
+            string perfilActual = SessionManager.GetInstance().Usuario.Perfil ?? "";
+            if (!perfilActual.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
+                throw new BE.AppException("err.bll.usuario.alta_sin_permiso",
+                    "Solo un Administrador puede crear nuevos usuarios.");
+
             if (string.IsNullOrWhiteSpace(username))
-                throw new Exception("El nombre de usuario es obligatorio.");
+                throw new BE.AppException("err.bll.usuario.username_requerido",
+                    "El nombre de usuario es obligatorio.");
 
             if (username.Trim().Length < 3)
-                throw new Exception("El nombre de usuario debe tener al menos 3 caracteres.");
+                throw new BE.AppException("err.bll.usuario.username_corto",
+                    "El nombre de usuario debe tener al menos 3 caracteres.");
 
             if (string.IsNullOrWhiteSpace(perfil))
-                throw new Exception("El perfil/rol es obligatorio.");
+                throw new BE.AppException("err.bll.usuario.perfil_requerido",
+                    "El perfil/rol es obligatorio.");
 
             perfil = NormalizarPerfil(perfil);
 
@@ -118,11 +131,12 @@ namespace BLL
         public string ResetearClave(string modulo, int idUsuario, string usernameObjetivo)
         {
             if (!SessionManager.IsLoggedIn)
-                throw new Exception("No hay sesión activa.");
+                throw new BE.AppException("err.bll.sesion_expirada", "La sesión expiró. Volvé a iniciar sesión.");
 
             string perfil = SessionManager.GetInstance().Usuario.Perfil ?? "";
             if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Solo un Administrador puede resetear contraseñas.");
+                throw new BE.AppException("err.bll.usuario.reset_sin_permiso",
+                    "Solo un Administrador puede resetear contraseñas.");
 
             var admin = SessionManager.GetInstance().Usuario;
 
@@ -150,11 +164,12 @@ namespace BLL
         public void Desbloquear(string modulo, int idUsuario, string usernameObjetivo)
         {
             if (!SessionManager.IsLoggedIn)
-                throw new Exception("No hay sesión activa.");
+                throw new BE.AppException("err.bll.sesion_expirada", "La sesión expiró. Volvé a iniciar sesión.");
 
             string perfil = SessionManager.GetInstance().Usuario.Perfil ?? "";
             if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Solo un Administrador puede desbloquear cuentas.");
+                throw new BE.AppException("err.bll.usuario.desbloquear_sin_permiso",
+                    "Solo un Administrador puede desbloquear cuentas.");
 
             new VersionUsuario().GrabarVersion(idUsuario,
                 SessionManager.GetInstance().Usuario.Username,
@@ -167,18 +182,28 @@ namespace BLL
                 BE.Criticidad.Alta);
         }
 
+        // Resetea la contraseña de TODOS los usuarios a la clave temporal por defecto. Solo Administrador.
+        // Devuelve la clave usada para que la GUI pueda informarla al usuario sin conocerla.
+        public string ResetearTodasLasClaves(string modulo)
+        {
+            ResetearTodasLasClaves(modulo, ClaveTemporalDefault);
+            return ClaveTemporalDefault;
+        }
+
         // Resetea la contraseña de TODOS los usuarios a una clave temporal. Solo Administrador.
         public void ResetearTodasLasClaves(string modulo, string claveTemporal)
         {
             if (!SessionManager.IsLoggedIn)
-                throw new Exception("No hay sesión activa.");
+                throw new BE.AppException("err.bll.sesion_expirada", "La sesión expiró. Volvé a iniciar sesión.");
 
             string perfil = SessionManager.GetInstance().Usuario.Perfil ?? "";
             if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Solo un Administrador puede realizar esta operación.");
+                throw new BE.AppException("err.bll.usuario.resetmasivo_sin_permiso",
+                    "Solo un Administrador puede realizar esta operación.");
 
             var (valida, mensaje) = Encriptador.ValidarContrasena(claveTemporal);
-            if (!valida) throw new Exception(mensaje);
+            if (!valida)
+                throw new BE.AppException("err.bll.usuario.clave_invalida", mensaje);
 
             string hash = Encriptador.Hash(claveTemporal);
             usuarioDAL.ResetearTodasLasClaves(hash);

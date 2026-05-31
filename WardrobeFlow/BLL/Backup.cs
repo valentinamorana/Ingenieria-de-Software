@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace BLL
@@ -8,6 +9,17 @@ namespace BLL
     {
         private readonly DAL.Backup       _dal      = new DAL.Backup();
         private readonly Servicios.Bitacora _bitacora = new Servicios.Bitacora();
+
+        private static void ValidarAdministrador()
+        {
+            if (!Seguridad.SessionManager.IsLoggedIn)
+                throw new BE.AppException("err.bll.sesion_expirada",
+                    "La sesión expiró. Volvé a iniciar sesión.");
+            string perfil = Seguridad.SessionManager.GetInstance().Usuario.Perfil ?? "";
+            if (!perfil.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+                throw new BE.AppException("err.bll.backup.sin_permiso",
+                    "Solo un Administrador puede realizar operaciones de backup y restauración.");
+        }
 
         // Construye el nombre del archivo embebiendo el usuario activo.
         // Formato: WardrobeFlow_Backup_yyyyMMddHHmmss_USUARIO.bak
@@ -32,6 +44,7 @@ namespace BLL
 
         public void RestaurarBackup(string modulo, string rutaArchivo)
         {
+            ValidarAdministrador();
             _dal.RestaurarBackup(rutaArchivo);
             _bitacora.Registrar(modulo,
                 $"Base de datos restaurada desde '{Path.GetFileName(rutaArchivo)}'",
@@ -40,6 +53,7 @@ namespace BLL
 
         public void EliminarBackup(string modulo, string rutaArchivo)
         {
+            ValidarAdministrador();
             if (!File.Exists(rutaArchivo))
                 throw new FileNotFoundException("El archivo de backup no existe.", rutaArchivo);
 
@@ -48,6 +62,25 @@ namespace BLL
             _bitacora.Registrar(modulo,
                 $"Backup eliminado: '{filename}'",
                 BE.Criticidad.Alta);
+        }
+
+        // Extrae el autor del nombre de un archivo de backup.
+        // Formato: WardrobeFlow_Backup_yyyyMMddHHmmss_USUARIO.bak
+        // Devuelve "—" si el nombre no sigue la convención.
+        public string ExtraerAutorDeNombre(string nombreArchivo)
+        {
+            const string prefix = "WardrobeFlow_Backup_";
+            if (!nombreArchivo.StartsWith(prefix) || nombreArchivo.Length <= prefix.Length + 15)
+                return "—";
+
+            string rest = nombreArchivo.Substring(prefix.Length);
+            bool isNewFormat = rest.Length >= 15
+                && rest.Substring(0, 14).All(char.IsDigit)
+                && rest[14] == '_';
+
+            if (!isNewFormat) return "—";
+
+            return Path.GetFileNameWithoutExtension(rest.Substring(15));
         }
     }
 }

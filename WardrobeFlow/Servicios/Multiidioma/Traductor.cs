@@ -687,8 +687,9 @@ namespace Servicios.Multiidioma
             { "conf.desbloquear.titulo", "Confirmar Desbloqueo"                                   },
             { "msg.usr.desbloqueada",    "Cuenta '{0}' desbloqueada correctamente."               },
             { "conf.resetmasivo.titulo", "Resetear todas las claves"                              },
-            { "conf.resetmasivo.body",   "Esto va a resetear la contraseña de TODOS los usuarios a:\n\n   {0}\n\nComunicate con cada empleado para que la cambien.\n\n¿Confirmar?" },
-            { "msg.usr.resetmasivo",     "Todas las claves fueron reseteadas a: {0}"              },
+            { "conf.resetmasivo.body",         "Esto va a resetear la contraseña de TODOS los usuarios a:\n\n   {0}\n\nComunicate con cada empleado para que la cambien.\n\n¿Confirmar?" },
+            { "conf.resetmasivo.body.generico","Esto va a resetear la contraseña de TODOS los usuarios a una clave temporal.\n\nComunicate con cada empleado para que la cambien.\n\n¿Confirmar?" },
+            { "msg.usr.resetmasivo",           "Todas las claves fueron reseteadas a: {0}"              },
             // GestorPermisos
             { "frm.gestorpermisos",      "Gestor de Perfiles — Permisos"                          },
             { "lbl.permisos.titulo",     "Perfiles y Permisos"                                    },
@@ -742,7 +743,6 @@ namespace Servicios.Multiidioma
             { "perm.rol.gerentecomercial",    "Gerente Comercial"                                   },
             { "perm.rol.gerenteinventario",   "Gerente de Inventario"                               },
             { "perm.rol.encargadodestock",    "Encargado de Stock"                                  },
-            { "perm.rol.operadorlogistico",   "Operador Logístico"                                  },
             // FormIdiomas
             { "frm.idiomas",             "Gestión de Idiomas"                                     },
             { "lbl.idiomas.titulo",      "Idiomas del sistema"                                    },
@@ -801,6 +801,8 @@ namespace Servicios.Multiidioma
             { "dash.clientes",           "Clientes\nregistrados"                                  },
             { "dash.pedidos",            "Pedidos\npendientes"                                    },
             { "dash.backup",             "días sin\nbackup"                                       },
+            { "dash.ocupacion",          "ocupación\ndel stock"                                   },
+            { "dash.ocupacion.detalle",  "{0} en uso · {1} libres"                                },
             { "dash.btn.refrescar",      "↻ Actualizar"                                           },
             // Reporte de Jornada
             { "frm.reportejornada",      "Reporte de Jornada — WardrobeFlow"                      },
@@ -941,9 +943,11 @@ namespace Servicios.Multiidioma
             { "col.cli.vencimiento",         "Vencimiento"                                                               },
             { "msg.cli.sinvenc",             "Sin vencimiento"                                                           },
             { "msg.cli.vencido",             "Vencido"                                                                   },
+            { "msg.cli.proxvencer",          "Vence pronto"                                                              },
             { "msg.cli.vigente",             "Vigente"                                                                   },
             // NuevoPedido — suscripción vencida + resumen traducido
             { "err.ped.suscvencida",         "⚠ La suscripción de {0} venció el {1}.\nRenovar en el módulo de Clientes." },
+            { "lbl.ped.proxvencer",          "⏰ La suscripción vence en {0} día(s). Avisale al cliente para renovarla." },
             { "lbl.ped.res.linea1",          "Seleccionadas: {0}  |  Ya en uso: {1}  |  Total: {2}"                     },
             { "lbl.ped.res.limite",          "✗ El plan '{0}' permite {1} prenda(s). Estás superando el límite por {2}." },
             { "lbl.ped.res.vacio",           "Podés agregar hasta {0} prenda(s) (plan {1})."                            },
@@ -1492,7 +1496,8 @@ namespace Servicios.Multiidioma
             { "conf.desbloquear.titulo", "Confirm Unlock"                                       },
             { "msg.usr.desbloqueada",    "Account '{0}' unlocked successfully."                },
             { "conf.resetmasivo.titulo", "Reset all passwords"                                  },
-            { "conf.resetmasivo.body",   "This will reset the password of ALL users to:\n\n   {0}\n\nNotify each employee to change it.\n\nConfirm?" },
+            { "conf.resetmasivo.body",         "This will reset the password of ALL users to:\n\n   {0}\n\nNotify each employee to change it.\n\nConfirm?" },
+            { "conf.resetmasivo.body.generico","This will reset the password of ALL users to a temporary password.\n\nNotify each employee to change it.\n\nConfirm?" },
             { "msg.usr.resetmasivo",     "All passwords have been reset to: {0}"               },
             // GestorPermisos
             { "frm.gestorpermisos",      "Profile and Permission Manager"                        },
@@ -1546,7 +1551,6 @@ namespace Servicios.Multiidioma
             { "perm.rol.gerentecomercial",    "Sales Manager"                                       },
             { "perm.rol.gerenteinventario",   "Inventory Manager"                                   },
             { "perm.rol.encargadodestock",    "Stock Clerk"                                         },
-            { "perm.rol.operadorlogistico",   "Logistics Operator"                                  },
             // FormIdiomas
             { "frm.idiomas",             "Language Management"                                   },
             { "lbl.idiomas.titulo",      "System Languages"                                      },
@@ -1604,6 +1608,8 @@ namespace Servicios.Multiidioma
             { "dash.clientes",           "Clients\nregistered"                                    },
             { "dash.pedidos",            "Orders\npending"                                        },
             { "dash.backup",             "days without\nbackup"                                   },
+            { "dash.ocupacion",          "stock\noccupancy"                                       },
+            { "dash.ocupacion.detalle",  "{0} in use · {1} available"                             },
             { "dash.btn.refrescar",      "↻ Refresh"                                              },
             { "mnu.reportejornada",      "Daily Report"                                           },
             // Daily Report
@@ -1745,9 +1751,11 @@ namespace Servicios.Multiidioma
             { "col.cli.vencimiento",         "Expiry"                                                                    },
             { "msg.cli.sinvenc",             "No expiry"                                                                 },
             { "msg.cli.vencido",             "Expired"                                                                   },
+            { "msg.cli.proxvencer",          "Expiring soon"                                                             },
             { "msg.cli.vigente",             "Active"                                                                    },
             // New Order — expired subscription + translated summary
             { "err.ped.suscvencida",         "⚠ {0}'s subscription expired on {1}.\nUpdate in the Clients module."      },
+            { "lbl.ped.proxvencer",          "⏰ Subscription expires in {0} day(s). Remind the client to renew."       },
             { "lbl.ped.res.linea1",          "Selected: {0}  |  Already in use: {1}  |  Total: {2}"                     },
             { "lbl.ped.res.limite",          "✗ Plan '{0}' allows {1} garment(s). You are exceeding the limit by {2}."  },
             { "lbl.ped.res.vacio",           "You can add up to {0} garment(s) (plan {1})."                             },
@@ -2296,8 +2304,9 @@ namespace Servicios.Multiidioma
             { "conf.desbloquear.titulo", "Подтвердить разблокировку"                            },
             { "msg.usr.desbloqueada",    "Аккаунт '{0}' разблокирован."                        },
             { "conf.resetmasivo.titulo", "Сбросить все пароли"                                  },
-            { "conf.resetmasivo.body",   "Все пароли будут сброшены к:\n\n   {0}\n\nСообщите каждому сотруднику о необходимости их изменить.\n\nПодтвердить?" },
-            { "msg.usr.resetmasivo",     "Все пароли сброшены к: {0}"                           },
+            { "conf.resetmasivo.body",         "Все пароли будут сброшены к:\n\n   {0}\n\nСообщите каждому сотруднику о необходимости их изменить.\n\nПодтвердить?" },
+            { "conf.resetmasivo.body.generico","Все пароли будут сброшены до временного пароля.\n\nСообщите каждому сотруднику о необходимости изменить его.\n\nПодтвердить?" },
+            { "msg.usr.resetmasivo",           "Все пароли сброшены к: {0}"                           },
             // GestorPermisos
             { "frm.gestorpermisos",      "Менеджер профилей — права"                             },
             { "lbl.permisos.titulo",     "Профили и права"                                       },
@@ -2349,7 +2358,6 @@ namespace Servicios.Multiidioma
             { "perm.rol.gerentecomercial",    "Коммерческий менеджер"                             },
             { "perm.rol.gerenteinventario",   "Менеджер склада"                                   },
             { "perm.rol.encargadodestock",    "Кладовщик"                                         },
-            { "perm.rol.operadorlogistico",   "Логист"                                            },
             // FormIdiomas
             { "frm.idiomas",             "Управление языками"                                    },
             { "lbl.idiomas.titulo",      "Языки системы"                                         },
@@ -2407,6 +2415,8 @@ namespace Servicios.Multiidioma
             { "dash.clientes",           "Клиентов\nзарегистрировано"                             },
             { "dash.pedidos",            "Заказов\nв ожидании"                                    },
             { "dash.backup",             "дней без\nрезервной копии"                              },
+            { "dash.ocupacion",          "загрузка\nсклада"                                       },
+            { "dash.ocupacion.detalle",  "{0} исп. · {1} свободно"                               },
             { "dash.btn.refrescar",      "↻ Обновить"                                             },
             { "mnu.reportejornada",      "Отчёт за день"                                          },
             // Отчёт за день
@@ -2548,9 +2558,11 @@ namespace Servicios.Multiidioma
             { "col.cli.vencimiento",         "Истекает"                                                                  },
             { "msg.cli.sinvenc",             "Без ограничений"                                                          },
             { "msg.cli.vencido",             "Истекло"                                                                   },
+            { "msg.cli.proxvencer",          "Истекает скоро"                                                            },
             { "msg.cli.vigente",             "Активно"                                                                   },
             // Новый заказ — истёкшая подписка + переведённое резюме
             { "err.ped.suscvencida",         "⚠ Подписка {0} истекла {1}.\nОбновите в модуле Клиентов."               },
+            { "lbl.ped.proxvencer",          "⏰ Подписка истекает через {0} дн. Напомните клиенту продлить её."       },
             { "lbl.ped.res.linea1",          "Выбрано: {0}  |  Уже в использовании: {1}  |  Всего: {2}"               },
             { "lbl.ped.res.limite",          "✗ План '{0}' допускает {1} ед. Вы превышаете лимит на {2}."              },
             { "lbl.ped.res.vacio",           "Вы можете добавить до {0} ед. (план {1})."                              },
@@ -3063,8 +3075,9 @@ namespace Servicios.Multiidioma
             { "conf.desbloquear.titulo",   "Confirmar Desbloqueio"                      },
             { "msg.usr.desbloqueada",      "Conta '{0}' desbloqueada com sucesso."     },
             { "conf.resetmasivo.titulo",   "Redefinir todas as senhas"                  },
-            { "conf.resetmasivo.body",     "Isso irá redefinir a senha de TODOS os usuários para:\n\n   {0}\n\nComunique cada funcionário para alterá-la.\n\nConfirmar?" },
-            { "msg.usr.resetmasivo",       "Todas as senhas foram redefinidas para: {0}" },
+            { "conf.resetmasivo.body",         "Isso irá redefinir a senha de TODOS os usuários para:\n\n   {0}\n\nComunique cada funcionário para alterá-la.\n\nConfirmar?" },
+            { "conf.resetmasivo.body.generico","Isso irá redefinir a senha de TODOS os usuários para uma senha temporária.\n\nComunique cada funcionário para alterá-la.\n\nConfirmar?" },
+            { "msg.usr.resetmasivo",           "Todas as senhas foram redefinidas para: {0}" },
             { "frm.gestorpermisos",        "Gerenciador de Perfis — Permissões"         },
             { "lbl.permisos.titulo",       "Perfis e Permissões"                        },
             { "lbl.permisos.rol",          "Função:"                                    },
@@ -3113,7 +3126,6 @@ namespace Servicios.Multiidioma
             { "perm.rol.gerentecomercial",    "Gerente Comercial"                         },
             { "perm.rol.gerenteinventario",   "Gerente de Estoque"                        },
             { "perm.rol.encargadodestock",    "Responsável de Estoque"                    },
-            { "perm.rol.operadorlogistico",   "Operador Logístico"                        },
             { "frm.idiomas",             "Gerenciamento de Idiomas"                     },
             { "lbl.idiomas.titulo",      "Idiomas do sistema"                           },
             { "lbl.idiomas.trad",        "Traduções do idioma selecionado"              },
@@ -3161,6 +3173,8 @@ namespace Servicios.Multiidioma
             { "dash.clientes",           "Clientes\ncadastrados"                         },
             { "dash.pedidos",            "Pedidos\npendentes"                            },
             { "dash.backup",             "dias sem\nbackup"                              },
+            { "dash.ocupacion",          "ocupação\ndo estoque"                          },
+            { "dash.ocupacion.detalle",  "{0} em uso · {1} disponíveis"                  },
             { "dash.btn.refrescar",      "↻ Atualizar"                                   },
             { "frm.reportejornada",      "Relatório de Jornada — WardrobeFlow"           },
             { "rpt.generar",             "Gerar"                                         },
@@ -3281,8 +3295,10 @@ namespace Servicios.Multiidioma
             { "col.cli.vencimiento",         "Vencimento"                                },
             { "msg.cli.sinvenc",             "Sem vencimento"                            },
             { "msg.cli.vencido",             "Vencido"                                   },
+            { "msg.cli.proxvencer",          "Vence em breve"                            },
             { "msg.cli.vigente",             "Vigente"                                   },
             { "err.ped.suscvencida",         "⚠ A assinatura de {0} venceu em {1}.\nRenovar no módulo de Clientes." },
+            { "lbl.ped.proxvencer",          "⏰ A assinatura vence em {0} dia(s). Avise o cliente para renová-la." },
             { "lbl.ped.res.linea1",          "Selecionadas: {0}  |  Em uso: {1}  |  Total: {2}" },
             { "lbl.ped.res.limite",          "✗ O plano '{0}' permite {1} roupa(s). Você está excedendo o limite em {2}." },
             { "lbl.ped.res.vacio",           "Você pode adicionar até {0} roupa(s) (plano {1})." },
@@ -3338,10 +3354,7 @@ namespace Servicios.Multiidioma
             // Menu — Timer
             { "alerta.integridad.titulo",          "Alerta de Integridade"                },
             { "alerta.integridad.msg",             "ALERTA: Problemas de integridade detectados na tabela Usuario.\n\nLinhas com DVH inválido: {0}\nDVV armazenado: {1}  |  DVV calculado: {2}\n\nVá a Administrar → Diagnóstico de Integridade para reparar." },
-            // Módulos auxiliares
-            { "msg.modulo.outfits",      "O módulo de Outfits ainda não está disponível." },
-            { "msg.modulo.categorias",   "O módulo de Categorias ainda não está disponível." },
-            { "lbl.proximamente",        "Em breve"                                       },
+            // Módulos auxiliares — ver entradas em linha ~3063
         });
 
         // ── Constructor de diccionario ────────────────────────────────────────

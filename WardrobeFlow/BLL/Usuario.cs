@@ -8,12 +8,19 @@ namespace BLL
     /// <summary>Lógica de negocio para autenticación y gestión de usuarios.</summary>
     public class Usuario
     {
-        private readonly DAL.Usuario        usuarioDAL = new DAL.Usuario();
+        private readonly DAL.Interfaces.IUsuarioDAL usuarioDAL;
         private readonly BLL.Familia        perfilesBLL = new BLL.Familia();
         private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
 
+        // DI: el constructor por defecto usa el DAL real; el otro permite inyectar un doble.
+        public Usuario() : this(new DAL.Usuario()) { }
+        public Usuario(DAL.Interfaces.IUsuarioDAL usuarioDAL)
+        {
+            this.usuarioDAL = usuarioDAL;
+        }
+
         private const int    MaxIntentosFallidos  = 3;
-        private const string RolAdministrador    = "Administrador";
+        private const string RolAdministrador    = BE.Roles.Administrador;
         private const string ClaveTemporalDefault = "Wardrobe1!";
 
         /// <summary>Autentica al usuario y establece la sesión. Bloquea la cuenta tras 3 intentos fallidos.</summary>
@@ -99,6 +106,9 @@ namespace BLL
                 throw new BE.AppException("err.bll.usuario.alta_sin_permiso",
                     "Solo un Administrador puede crear nuevos usuarios.");
 
+            // T07 — Verificar integridad de la base ANTES de modificar usuarios.
+            Configuracion.AsegurarIntegridadUsuarios();
+
             if (string.IsNullOrWhiteSpace(username))
                 throw new BE.AppException("err.bll.usuario.username_requerido",
                     "El nombre de usuario es obligatorio.");
@@ -140,6 +150,9 @@ namespace BLL
                 throw new BE.AppException("err.bll.usuario.reset_sin_permiso",
                     "Solo un Administrador puede resetear contraseñas.");
 
+            // T07 — Verificar integridad de la base ANTES de modificar usuarios.
+            Configuracion.AsegurarIntegridadUsuarios();
+
             var admin = SessionManager.GetInstance().Usuario;
 
             new VersionUsuario().GrabarVersion(idUsuario, admin.Username,
@@ -172,6 +185,9 @@ namespace BLL
             if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
                 throw new BE.AppException("err.bll.usuario.desbloquear_sin_permiso",
                     "Solo un Administrador puede desbloquear cuentas.");
+
+            // T07 — Verificar integridad de la base ANTES de modificar usuarios.
+            Configuracion.AsegurarIntegridadUsuarios();
 
             new VersionUsuario().GrabarVersion(idUsuario,
                 SessionManager.GetInstance().Usuario.Username,

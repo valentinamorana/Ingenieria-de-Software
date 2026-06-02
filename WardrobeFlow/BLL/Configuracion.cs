@@ -115,10 +115,10 @@ namespace BLL
             try
             {
                 var dvDAL = new DAL.DigitoVerificador();
-                var svc   = new Seguridad.DigitoVerificador();
+                var svc   = Seguridad.CalculadorDV.Crear();
                 var filas = dvDAL.ObtenerFilasUsuario();
 
-                if (filas.Count == 0) return true;
+                if (filas.Count == 0) return VerificarTablasAdicionales(out resultado);
 
                 // Primer arranque sin DVH: todos null o cero + sin DVV → recalcular.
                 bool todosEnCero = true;
@@ -129,7 +129,7 @@ namespace BLL
                 if (todosEnCero && (dvvIni == null || dvvIni == 0))
                 {
                     RecalcularTodoDV(dvDAL, svc, filas);
-                    return true;
+                    return VerificarTablasAdicionales(out resultado);
                 }
 
                 // Migración de algoritmo: si todos los DVH almacenados son < 10
@@ -150,7 +150,7 @@ namespace BLL
                         "[Configuracion] Detectados DVH del algoritmo anterior (mod 10). " +
                         "Recalculando con nuevo algoritmo (mod 999.983)...");
                     RecalcularTodoDV(dvDAL, svc, filas);
-                    return true;
+                    return VerificarTablasAdicionales(out resultado);
                 }
 
                 var dvhsRecalculados = new List<int>();
@@ -175,7 +175,7 @@ namespace BLL
                 if (dvhOk && dvvOk)
                 {
                     LogearVerificacion("Usuario", dvvAlmacenado, dvvCalculado, true, 0, "Arranque");
-                    return true;
+                    return VerificarTablasAdicionales(out resultado);
                 }
 
                 resultado = new ResultadoIntegridad
@@ -191,11 +191,38 @@ namespace BLL
             }
             catch (Exception ex)
             {
-                if (ex.Message.Contains("DVH") || ex.InnerException?.Message.Contains("DVH") == true)
+                System.Diagnostics.Trace.TraceError($"[Configuracion.VerificarIntegridadDV] {ex.Message}");
+
+                // Tolerancia: la columna DVH / la tabla DVVertical aún no existen (BD sin
+                // migrar) → no hay integridad que verificar todavía, no se bloquea.
+                string msg = (ex.Message ?? "") + " " + (ex.InnerException?.Message ?? "");
+                if (msg.Contains("DVH") || msg.Contains("DVVertical"))
                     return true;
-                resultado = new ResultadoIntegridad { ErrorTecnico = ex.Message };
-                return true;
+
+                // FAIL-SAFE: ante cualquier otro error NO se asume integridad. Se bloquea el
+                // acceso y se informa al administrador (RestauracionForm muestra FilasCorruptas).
+                resultado = new ResultadoIntegridad
+                {
+                    HayDvhInvalido = true,
+                    FilasCorruptas = new List<string> { "Error técnico al verificar la integridad: " + ex.Message },
+                    DvvAlmacenado  = null,
+                    DvvCalculado   = 0
+                };
+                return false;
             }
+        }
+
+        /// <summary>
+        /// T07 — Asegura la integridad de la tabla Usuario ANTES de una operación sensible
+        /// (alta/reset/desbloqueo de usuarios). Lanza AppException si la base fue manipulada,
+        /// de modo que la operación no se ejecute sobre datos corruptos.
+        /// </summary>
+        public static void AsegurarIntegridadUsuarios()
+        {
+            if (!VerificarIntegridadDV(out ResultadoIntegridad _))
+                throw new BE.AppException("err.bll.integridad",
+                    "Operación cancelada: se detectó una posible manipulación de los datos de usuarios " +
+                    "(dígito verificador inválido). Reiniciá el sistema para reparar la integridad antes de continuar.");
         }
 
         // Garantiza que exista al menos un segundo Administrador ("admin2") en la BD.
@@ -206,7 +233,7 @@ namespace BLL
         public static string SeedAdminSecundario()
         {
             const string Username = "admin2";
-            const string Perfil   = "Administrador";
+            const string Perfil   = BE.Roles.Administrador;
 
             try
             {
@@ -232,7 +259,7 @@ namespace BLL
         public static ResultadoDiagnostico ObtenerDiagnostico()
         {
             var dvDAL = new DAL.DigitoVerificador();
-            var svc   = new Seguridad.DigitoVerificador();
+            var svc   = Seguridad.CalculadorDV.Crear();
             var filas = dvDAL.ObtenerFilasUsuario();
 
             var rotas      = new List<BE.FilaUsuarioDV>();
@@ -265,7 +292,7 @@ namespace BLL
         public static void RepararFilas(IEnumerable<int> ids)
         {
             var dvDAL  = new DAL.DigitoVerificador();
-            var svc    = new Seguridad.DigitoVerificador();
+            var svc    = Seguridad.CalculadorDV.Crear();
             var todas  = dvDAL.ObtenerFilasUsuario();
             var idsSet = new HashSet<int>(ids);
 
@@ -290,14 +317,19 @@ namespace BLL
         public static void RecalcularIntegridadDV()
         {
             var dvDAL = new DAL.DigitoVerificador();
-            var svc   = new Seguridad.DigitoVerificador();
+            var svc   = Seguridad.CalculadorDV.Crear();
             var filas = dvDAL.ObtenerFilasUsuario();
             RecalcularTodoDV(dvDAL, svc, filas);
+
+            // T07 — Tablas adicionales protegidas con DV.
+            dvDAL.RecalcularTabla(DAL.Cliente.DV_Tabla,  DAL.Cliente.DV_Pk,  DAL.Cliente.DV_Columnas);
+            dvDAL.RecalcularTabla(DAL.Empleado.DV_Tabla, DAL.Empleado.DV_Pk, DAL.Empleado.DV_Columnas);
+            new DAL.Pedido().RecalcularDV();   // objeto multi-tabla (pedido + líneas)
         }
 
         // Helper compartido entre VerificarIntegridadDV (primer arranque) y RecalcularIntegridadDV.
         private static void RecalcularTodoDV(DAL.DigitoVerificador dvDAL,
-                                              Seguridad.DigitoVerificador svc,
+                                              Seguridad.ICalculadorDV svc,
                                               List<BE.FilaUsuarioDV> filas)
         {
             var dvhValues = new List<int>();
@@ -311,6 +343,76 @@ namespace BLL
             }
             int dvv = svc.CalcularDVV(dvhValues);
             dvDAL.GuardarDVV("Usuario", dvv);
+        }
+
+        // ── DV en tablas ADICIONALES (Cliente, Empleado) — T07 ──────────────────
+
+        // Verifica las tablas protegidas además de Usuario. Si alguna está corrupta,
+        // arma el resultado y devuelve false; si están OK (o se inicializan en el primer
+        // arranque), devuelve true. Las definiciones de columnas viven en cada DAL.
+        private static bool VerificarTablasAdicionales(out ResultadoIntegridad resultado)
+        {
+            resultado = null;
+            var dvDAL = new DAL.DigitoVerificador();
+            var svc   = Seguridad.CalculadorDV.Crear();
+            var corruptas = new List<string>();
+
+            var pedidoDAL = new DAL.Pedido();
+            VerificarUnaTabla(dvDAL, svc, DAL.Cliente.DV_Tabla,
+                () => dvDAL.ObtenerFilas(DAL.Cliente.DV_Tabla, DAL.Cliente.DV_Pk, DAL.Cliente.DV_Columnas),
+                () => dvDAL.RecalcularTabla(DAL.Cliente.DV_Tabla, DAL.Cliente.DV_Pk, DAL.Cliente.DV_Columnas), corruptas);
+            VerificarUnaTabla(dvDAL, svc, DAL.Empleado.DV_Tabla,
+                () => dvDAL.ObtenerFilas(DAL.Empleado.DV_Tabla, DAL.Empleado.DV_Pk, DAL.Empleado.DV_Columnas),
+                () => dvDAL.RecalcularTabla(DAL.Empleado.DV_Tabla, DAL.Empleado.DV_Pk, DAL.Empleado.DV_Columnas), corruptas);
+            // T07 — Pedido: objeto MULTI-TABLA (pedido + líneas PedidoPrenda).
+            VerificarUnaTabla(dvDAL, svc, DAL.Pedido.DV_Tabla,
+                () => pedidoDAL.ObtenerFilasDV(),
+                () => pedidoDAL.RecalcularDV(), corruptas);
+
+            if (corruptas.Count == 0) return true;
+
+            resultado = new ResultadoIntegridad
+            {
+                HayDvhInvalido = true,
+                FilasCorruptas = corruptas,
+                DvvAlmacenado  = null,
+                DvvCalculado   = 0
+            };
+            return false;
+        }
+
+        private static void VerificarUnaTabla(DAL.DigitoVerificador dvDAL, Seguridad.ICalculadorDV svc,
+            string tabla, System.Func<List<BE.FilaDV>> obtenerFilas, System.Action recalcular, List<string> corruptas)
+        {
+            List<BE.FilaDV> filas;
+            try { filas = obtenerFilas(); }
+            catch { return; }   // tabla/columna DVH sin migrar → no se verifica
+            if (filas.Count == 0) return;
+
+            // Primer arranque: sin DVH ni DVV → inicializar (no es corrupción).
+            bool todosNull = filas.TrueForAll(f => f.DVHAlmacenado == null || f.DVHAlmacenado == 0);
+            int? dvvAlm = dvDAL.ObtenerDVV(tabla);
+            if (todosNull && (dvvAlm == null || dvvAlm == 0))
+            {
+                recalcular();
+                return;
+            }
+
+            int antes = corruptas.Count;
+            var dvhs  = new List<int>();
+            foreach (var f in filas)
+            {
+                int calc = svc.CalcularDVH(f.Campos);
+                dvhs.Add(calc);
+                if (f.DVHAlmacenado == null || f.DVHAlmacenado != calc)
+                    corruptas.Add(f.Descripcion + " (DVH)");
+            }
+            int dvvCalc = svc.CalcularDVV(dvhs);
+            bool dvvOk  = dvvAlm != null && dvvAlm == dvvCalc;
+            if (!dvvOk) corruptas.Add(tabla + " (DVV)");
+
+            int rotasTabla = corruptas.Count - antes;
+            LogearVerificacion(tabla, dvvAlm, dvvCalc, rotasTabla == 0, rotasTabla, "Arranque");
         }
 
         // Devuelve los últimos N registros del historial de verificaciones DV.
@@ -354,7 +456,7 @@ namespace BLL
                     int.TryParse(File.ReadAllText(RutaConfigRecordatorio).Trim(), out int d) && d > 0)
                     return d;
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceError("[Configuracion.ObtenerDiasRecordatorio] " + ex.Message); }
             return DiasRecordatorioDefault;
         }
 
@@ -366,7 +468,7 @@ namespace BLL
                 if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
                 File.WriteAllText(RutaConfigRecordatorio, dias.ToString());
             }
-            catch { }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceError("[Configuracion.GuardarDiasRecordatorio] " + ex.Message); }
         }
 
         // Registra silenciosamente cada verificación en HistorialIntegridad.

@@ -23,7 +23,7 @@ namespace DAL
     ///   - acceso  → Singleton de BD (heredado, no se redeclara)
     ///   - ObtenerTodos() y ObtenerPorId() → implementados con SQL de Usuario
     /// </summary>
-    public class Usuario : BaseDAL<BE.Usuario>
+    public class Usuario : BaseDAL<BE.Usuario>, Interfaces.IUsuarioDAL
     {
         // Inserta un nuevo usuario con contraseña hasheada y rol asignado.
         // Estado=1 (activo) e IntentosFallidos=0 por defecto al crear.
@@ -310,7 +310,7 @@ namespace DAL
                 var filas = dvDAL.ObtenerFilasUsuario();
 
                 // Buscar la fila del usuario modificado y recalcular su DVH
-                var svc = new Seguridad.DigitoVerificador();
+                var svc = Seguridad.CalculadorDV.Crear();
                 foreach (var fila in filas)
                 {
                     if (fila.Id == idUsuario)
@@ -341,7 +341,7 @@ namespace DAL
             {
                 var dvDAL = new DigitoVerificador();
                 var filas = dvDAL.ObtenerFilasUsuario();
-                var svc   = new Seguridad.DigitoVerificador();
+                var svc   = Seguridad.CalculadorDV.Crear();
 
                 foreach (var fila in filas)
                 {
@@ -364,7 +364,7 @@ namespace DAL
         private static void ActualizarDVV(DigitoVerificador dvDAL)
         {
             var filas = dvDAL.ObtenerFilasUsuario();
-            var svc   = new Seguridad.DigitoVerificador();
+            var svc   = Seguridad.CalculadorDV.Crear();
 
             var dvhValues = new System.Collections.Generic.List<int>();
             foreach (var fila in filas)

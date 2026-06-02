@@ -6,8 +6,22 @@ using System.Data.SqlClient;
 namespace DAL
 {
     /// <summary>Acceso a datos de la tabla [Cliente].</summary>
-    public class Cliente : BaseDAL<BE.Cliente>
+    public class Cliente : BaseDAL<BE.Cliente>, Interfaces.IClienteDAL
     {
+        // T07 — Definición del Dígito Verificador de esta tabla (fuente única, usada
+        // tanto para recalcular tras escrituras como para verificar al arrancar).
+        public const  string   DV_Tabla    = "Cliente";
+        public const  string   DV_Pk       = "IdCliente";
+        public static readonly string[] DV_Columnas = { "Nombre", "Apellido", "DNI", "Email", "MetodoPago" };
+
+        // Recalcula DVH de cada fila + DVV de la tabla. Se llama tras Alta/Modificar/Baja.
+        // No propaga errores: la falla del DV no debe abortar la operación de negocio
+        // (la verificación de integridad al arranque la detectaría igual).
+        private void RecalcularDV()
+        {
+            try { new DigitoVerificador().RecalcularTabla(DV_Tabla, DV_Pk, DV_Columnas); }
+            catch (Exception ex) { System.Diagnostics.Trace.TraceError("[DAL.Cliente.RecalcularDV] " + ex.Message); }
+        }
 
         // Devuelve todos los clientes activos con el nombre de su plan (JOIN).
         public override List<BE.Cliente> ObtenerTodos()
@@ -87,24 +101,32 @@ namespace DAL
         // Verifica si ya existe un cliente activo con ese DNI.
         public bool ExisteDNI(string dni)
         {
-            SqlParameter[] p = { new SqlParameter("@DNI", dni) };
-            DataTable tabla = acceso.Leer(
-                "SELECT IdCliente FROM Cliente WHERE DNI = @DNI AND Activo = 1", p);
-            return tabla != null && tabla.Rows.Count > 0;
+            return BuscarIdPorDni(dni, -1) != 0;
         }
 
         // Verifica si existe otro cliente activo con ese DNI (excluyendo el ID indicado).
-        // Usado al modificar para detectar colisiones sin traer toda la tabla.
+        // Usado al modificar para detectar colisiones.
         public bool ExisteDNIParaOtro(string dni, int idExcluir)
         {
-            SqlParameter[] p =
-            {
-                new SqlParameter("@DNI",        dni),
-                new SqlParameter("@IdExcluir",  idExcluir)
-            };
+            return BuscarIdPorDni(dni, idExcluir) != 0;
+        }
+
+        // T03 — El DNI se almacena CIFRADO (AES con IV aleatorio), por lo que no se puede
+        // comparar por igualdad en SQL. Se trae el DNI de cada cliente activo, se descifra
+        // (TryDesencriptar tolera registros legacy en texto plano) y se compara en memoria.
+        private int BuscarIdPorDni(string dni, int idExcluir)
+        {
             DataTable tabla = acceso.Leer(
-                "SELECT IdCliente FROM Cliente WHERE DNI = @DNI AND IdCliente <> @IdExcluir AND Activo = 1", p);
-            return tabla != null && tabla.Rows.Count > 0;
+                "SELECT IdCliente, DNI FROM Cliente WHERE Activo = 1", null);
+            if (tabla == null) return 0;
+            foreach (DataRow row in tabla.Rows)
+            {
+                int id = Convert.ToInt32(row["IdCliente"]);
+                if (id == idExcluir) continue;
+                string dniGuardado = Seguridad.Encriptador.TryDesencriptar(row["DNI"].ToString());
+                if (string.Equals(dniGuardado, dni, StringComparison.Ordinal)) return id;
+            }
+            return 0;
         }
 
         // Inserta un nuevo cliente. Devuelve el ID generado.
@@ -114,7 +136,7 @@ namespace DAL
             {
                 new SqlParameter("@Nombre",           cliente.Nombre),
                 new SqlParameter("@Apellido",         cliente.Apellido),
-                new SqlParameter("@DNI",              cliente.DNI),
+                new SqlParameter("@DNI",              Seguridad.Encriptador.Encriptar(cliente.DNI)),
                 new SqlParameter("@Email",            (object)cliente.Email ?? DBNull.Value),
                 new SqlParameter("@MetodoPago",       cliente.MetodoPago),
                 new SqlParameter("@IdPlan",           (object)cliente.IdPlan ?? DBNull.Value),
@@ -128,9 +150,11 @@ namespace DAL
                 "SELECT SCOPE_IDENTITY() AS IdNuevo",
                 p);
 
-            return tabla != null && tabla.Rows.Count > 0
+            int idNuevo = tabla != null && tabla.Rows.Count > 0
                 ? Convert.ToInt32(tabla.Rows[0]["IdNuevo"])
                 : 0;
+            RecalcularDV();   // T07
+            return idNuevo;
         }
 
         // Actualiza los datos de un cliente existente.
@@ -140,7 +164,7 @@ namespace DAL
             {
                 new SqlParameter("@Nombre",           cliente.Nombre),
                 new SqlParameter("@Apellido",         cliente.Apellido),
-                new SqlParameter("@DNI",              cliente.DNI),
+                new SqlParameter("@DNI",              Seguridad.Encriptador.Encriptar(cliente.DNI)),
                 new SqlParameter("@Email",            (object)cliente.Email ?? DBNull.Value),
                 new SqlParameter("@MetodoPago",       cliente.MetodoPago),
                 new SqlParameter("@IdPlan",           (object)cliente.IdPlan ?? DBNull.Value),
@@ -153,6 +177,7 @@ namespace DAL
                 "FechaVencimiento=@FechaVencimiento " +
                 "WHERE IdCliente=@IdCliente",
                 p);
+            RecalcularDV();   // T07
         }
 
         // Baja lógica del cliente (Activo=0).
@@ -161,6 +186,7 @@ namespace DAL
             SqlParameter[] p = { new SqlParameter("@IdCliente", idCliente) };
             acceso.Escribir(
                 "UPDATE Cliente SET Activo = 0 WHERE IdCliente = @IdCliente", p);
+            RecalcularDV();   // T07
         }
 
         private BE.Cliente Mapear(DataRow row)
@@ -170,7 +196,7 @@ namespace DAL
                 IdCliente      = Convert.ToInt32(row["IdCliente"]),
                 Nombre         = row["Nombre"].ToString(),
                 Apellido       = row["Apellido"].ToString(),
-                DNI            = row["DNI"].ToString(),
+                DNI            = Seguridad.Encriptador.TryDesencriptar(row["DNI"].ToString()),
                 Email          = row["Email"] != DBNull.Value ? row["Email"].ToString() : null,
                 MetodoPago     = row["MetodoPago"].ToString(),
                 IdPlan         = row["IdPlan"] != DBNull.Value ? (int?)Convert.ToInt32(row["IdPlan"]) : null,

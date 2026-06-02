@@ -178,12 +178,13 @@ BEGIN
         IdEmpleado   INT           IDENTITY(1,1) PRIMARY KEY,
         Nombre       NVARCHAR(100) NOT NULL,
         Apellido     NVARCHAR(100) NOT NULL,
-        DNI          NVARCHAR(20)  NOT NULL,
+        DNI          NVARCHAR(200) NOT NULL,  -- T03: almacena el DNI CIFRADO (AES Base64)
         Email        NVARCHAR(200) NULL,
         FechaIngreso DATETIME      NOT NULL DEFAULT GETDATE(),
         Puesto       NVARCHAR(100) NULL,
         Legajo       NVARCHAR(50)  NULL,
-        IdUsuario    INT           NULL REFERENCES Usuario(IdUsuario)
+        IdUsuario    INT           NULL REFERENCES Usuario(IdUsuario),
+        DVH          INT           NULL              -- T07: dígito verificador horizontal
     );
     PRINT 'Tabla Empleado creada.';
 END
@@ -198,12 +199,13 @@ BEGIN
         IdCliente   INT           IDENTITY(1,1) PRIMARY KEY,
         Nombre      NVARCHAR(100) NOT NULL,
         Apellido    NVARCHAR(100) NOT NULL,
-        DNI         NVARCHAR(20)  NOT NULL,
+        DNI         NVARCHAR(200) NOT NULL,  -- T03: almacena el DNI CIFRADO (AES Base64)
         Email       NVARCHAR(200) NULL,
         MetodoPago  NVARCHAR(100) NULL,
         IdPlan      INT           NULL REFERENCES PlanSuscripcion(IdPlan),
         FechaAlta   DATETIME      NOT NULL DEFAULT GETDATE(),
-        Activo      BIT           NOT NULL DEFAULT 1
+        Activo      BIT           NOT NULL DEFAULT 1,
+        DVH         INT           NULL              -- T07: dígito verificador horizontal
     );
     PRINT 'Tabla Cliente creada.';
 END
@@ -242,7 +244,8 @@ BEGIN
         FechaPedido       DATETIME      NOT NULL DEFAULT GETDATE(),
         FechaDespacho     DATETIME      NULL,
         FechaEntrega      DATETIME      NULL,
-        MotivoCancelacion NVARCHAR(500) NULL
+        MotivoCancelacion NVARCHAR(500) NULL,
+        DVH               INT           NULL              -- T07: DV horizontal (incluye sus líneas)
     );
     PRINT 'Tabla Pedido creada.';
 END

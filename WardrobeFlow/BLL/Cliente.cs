@@ -10,10 +10,17 @@ namespace BLL
     /// </summary>
     public class Cliente : Interfaces.IClienteService
     {
-        private readonly DAL.Cliente               dalCliente  = new DAL.Cliente();
+        private readonly DAL.Interfaces.IClienteDAL dalCliente;
         private readonly DAL.PlanSuscripcion       dalPlan     = new DAL.PlanSuscripcion();
         private readonly Servicios.Bitacora        bitacora    = new Servicios.Bitacora();
         private readonly Servicios.BitacoraNegocio bitacoraNeg = new Servicios.BitacoraNegocio();
+
+        // DI: el constructor por defecto usa el DAL real; el otro permite inyectar un doble.
+        public Cliente() : this(new DAL.Cliente()) { }
+        public Cliente(DAL.Interfaces.IClienteDAL dalCliente)
+        {
+            this.dalCliente = dalCliente;
+        }
 
         // Lanza AppException si el usuario en sesión no posee el permiso indicado.
         private static void ValidarPermiso(string nombrePatente)
@@ -43,7 +50,7 @@ namespace BLL
         // Valida campos obligatorios y unicidad de DNI.
         public void Alta(string modulo, BE.Cliente cliente)
         {
-            ValidarPermiso("mnuClientes");
+            ValidarPermiso(BE.Patentes.Clientes);
             Validar(cliente);
 
             if (dalCliente.ExisteDNI(cliente.DNI))
@@ -65,7 +72,7 @@ namespace BLL
         // Bloquea si el nuevo plan tiene menos capacidad que las prendas actualmente en uso.
         public void Modificar(string modulo, BE.Cliente cliente)
         {
-            ValidarPermiso("mnuClientes");
+            ValidarPermiso(BE.Patentes.Clientes);
             Validar(cliente);
 
             if (dalCliente.ExisteDNIParaOtro(cliente.DNI, cliente.IdCliente))
@@ -103,7 +110,7 @@ namespace BLL
         // No se puede eliminar si tiene prendas actualmente en uso.
         public void Baja(string modulo, BE.Cliente cliente)
         {
-            ValidarPermiso("mnuClientes");
+            ValidarPermiso(BE.Patentes.Clientes);
             // Bloquear baja si el cliente tiene prendas en uso actualmente
             if (cliente.StockUtilizado > 0)
                 throw new BE.AppException("err.bll.cliente.baja_prendas",

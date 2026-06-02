@@ -47,7 +47,6 @@
     <Compile Include="BitacoraNegocio.cs" />
     <Compile Include="FilaTraduccion.cs" />
     <Compile Include="Control.cs" />
-    <Compile Include="Traduccion.cs" />
     <Compile Include="Idioma.cs" />
     <Compile Include="Cliente.cs" />
     <Compile Include="Componente.cs" />
@@ -69,10 +68,15 @@
     <Compile Include="TipoPermiso.cs" />
     <Compile Include="Usuario.cs" />
     <Compile Include="VersionUsuario.cs" />
+    <Compile Include="Memento\IMemento.cs" />
+    <Compile Include="Memento\IOriginator.cs" />
     <Compile Include="HistorialIntegridad.cs" />
     <Compile Include="EstadoComercialCliente.cs" />
     <Compile Include="OcupacionStock.cs" />
     <Compile Include="FilaUsuarioDV.cs" />
+    <Compile Include="FilaDV.cs" />
+    <Compile Include="Roles.cs" />
+    <Compile Include="Patentes.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -11,6 +11,7 @@ namespace BLL
         private readonly DAL.Interfaces.IUsuarioDAL usuarioDAL;
         private readonly BLL.Familia        perfilesBLL = new BLL.Familia();
         private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
+        private readonly DAL.ClaveRecuperacion claveDAL = new DAL.ClaveRecuperacion();
 
         // DI: el constructor por defecto usa el DAL real; el otro permite inyectar un doble.
         public Usuario() : this(new DAL.Usuario()) { }
@@ -22,6 +23,11 @@ namespace BLL
         private const int    MaxIntentosFallidos  = 3;
         private const string RolAdministrador    = BE.Roles.Administrador;
         private const string ClaveTemporalDefault = "Wardrobe1!";
+
+        // RF-10 — Días de retención antes de habilitar la purga física de un usuario archivado.
+        // Como en una empresa real: el ex-empleado queda "archivado" 1 año (no contamina la
+        // operación ni las métricas) y recién después puede eliminarse definitivamente.
+        public const int DiasRetencionPurga = 365;
 
         // Re-validación en el BACKEND: la gestión de usuarios es una operación EXCLUSIVA del
         // Administrador. Se verifica el rol en sesión por Perfil, de forma consistente con
@@ -210,6 +216,98 @@ namespace BLL
                 BE.Criticidad.Alta);
         }
 
+        // RF-10 — Baja LÓGICA (archivar) de un usuario. Solo Administrador.
+        // Reglas de protección:
+        //   • No se puede archivar al propio usuario en sesión.
+        //   • No se puede archivar al ÚLTIMO Administrador activo del sistema.
+        // Se graba un snapshot (Memento) antes para preservar trazabilidad (RF-14/18).
+        public void Eliminar(string modulo, int idUsuario, string usernameObjetivo)
+        {
+            ValidarEsAdministrador();
+
+            // T07 — Verificar integridad de la base ANTES de modificar usuarios.
+            Configuracion.AsegurarIntegridadUsuarios();
+
+            var admin = SessionManager.GetInstance().Usuario;
+
+            // Determinar el perfil del usuario objetivo para la protección del último admin.
+            var objetivo = usuarioDAL.ObtenerPorUsername(usernameObjetivo);
+            string perfilObjetivo = objetivo?.Perfil ?? "";
+            ValidarPuedeArchivar(perfilObjetivo, idUsuario, admin.Id,
+                                 usuarioDAL.ContarAdministradoresActivos());
+
+            // Snapshot del estado actual antes de archivar (control de cambios).
+            new VersionUsuario().GrabarVersion(idUsuario, admin.Username,
+                $"Snapshot antes de archivar (baja lógica) por '{admin.Username}'.");
+
+            usuarioDAL.BajaLogica(idUsuario);
+
+            bitacora.RegistrarSinSesion(
+                modulo:     modulo,
+                actividad:  "Baja Logica Usuario",
+                criticidad: BE.Criticidad.Alta,
+                idUsuario:  admin.Id,
+                detalle:    $"Admin '{admin.Username}' archivó al usuario '{usernameObjetivo}' (ID {idUsuario}) a las {DateTime.Now:HH:mm:ss}.");
+        }
+
+        // RF-10 — Reglas PURAS de protección para archivar un usuario. Se extraen acá para poder
+        // testearlas sin sesión ni base de datos (caso de prueba "eliminar el último admin"):
+        //   • No se puede archivar al usuario que tiene la sesión abierta.
+        //   • No se puede archivar al último Administrador activo del sistema.
+        public static void ValidarPuedeArchivar(string perfilObjetivo, int idObjetivo,
+                                                 int idEnSesion, int adminsActivos)
+        {
+            if (idEnSesion == idObjetivo)
+                throw new BE.AppException("err.bll.usuario.autobaja",
+                    "No podés archivar tu propio usuario mientras tenés la sesión abierta.");
+
+            if ((perfilObjetivo ?? "").Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase)
+                && adminsActivos <= 1)
+                throw new BE.AppException("err.bll.usuario.ultimo_admin",
+                    "No se puede archivar al último Administrador activo del sistema. " +
+                    "Creá o activá otro Administrador antes de archivar este.");
+        }
+
+        // RF-10 — Lista de usuarios archivados (Activo=0) para la vista de gestión.
+        public List<BE.Usuario> ObtenerArchivados()
+        {
+            return usuarioDAL.ObtenerArchivados();
+        }
+
+        // RF-10 — Usuarios archivados elegibles para purga física (archivados hace más de 1 año).
+        public List<BE.Usuario> ObtenerArchivadosParaPurga()
+        {
+            return usuarioDAL.ObtenerArchivadosParaPurga(DiasRetencionPurga);
+        }
+
+        // RF-10 — Purga FÍSICA de todos los usuarios archivados con más de DiasRetencionPurga
+        // días de antigüedad. Solo Administrador. Devuelve cuántos se eliminaron definitivamente.
+        public int PurgarArchivados(string modulo)
+        {
+            ValidarEsAdministrador();
+            Configuracion.AsegurarIntegridadUsuarios();
+
+            var purgables = usuarioDAL.ObtenerArchivadosParaPurga(DiasRetencionPurga);
+            if (purgables.Count == 0) return 0;
+
+            var admin = SessionManager.GetInstance().Usuario;
+            int eliminados = 0;
+            foreach (var u in purgables)
+            {
+                usuarioDAL.EliminarFisico(u.Id);
+                eliminados++;
+            }
+
+            bitacora.RegistrarSinSesion(
+                modulo:     modulo,
+                actividad:  "Purga Usuarios Archivados",
+                criticidad: BE.Criticidad.Alta,
+                idUsuario:  admin.Id,
+                detalle:    $"Admin '{admin.Username}' purgó definitivamente {eliminados} usuario(s) archivado(s) con más de {DiasRetencionPurga} días a las {DateTime.Now:HH:mm:ss}.");
+
+            return eliminados;
+        }
+
         // Resetea la contraseña de TODOS los usuarios a la clave temporal por defecto. Solo Administrador.
         // Devuelve la clave usada para que la GUI pueda informarla al usuario sin conocerla.
         public string ResetearTodasLasClaves(string modulo)
@@ -238,6 +336,93 @@ namespace BLL
                 idUsuario:  admin.Id,
                 detalle:    $"Admin '{admin.Username}' (ID: {admin.Id}) reseteo todas las contrasenas a clave temporal a las {DateTime.Now:HH:mm:ss}."
             );
+        }
+
+        // ── RF-10 / Recuperación — Claves de emergencia (tipo Steam, 1 solo uso) ──
+
+        // Genera N claves de emergencia: las hashea, persiste y exporta el .txt (copia del admin).
+        // Estático para poder seedearlo al instalar (sin sesión). Devuelve la ruta del .txt.
+        public static string GenerarClavesEmergencia(int cantidad)
+        {
+            var dal    = new DAL.ClaveRecuperacion();
+            var planas = new List<string>();
+            for (int i = 0; i < cantidad; i++)
+            {
+                string clave = GeneradorCredenciales.GenerarClaveRecuperacion();
+                planas.Add(clave);
+                dal.Insertar(Encriptador.Hash(clave));
+            }
+            return GeneradorCredenciales.ExportarClavesRecuperacion(planas);
+        }
+
+        // Regenera el set completo (admin): borra las anteriores y crea N nuevas. Devuelve la ruta del .txt.
+        public string RegenerarClavesEmergencia(string modulo, int cantidad = 10)
+        {
+            ValidarEsAdministrador();
+            claveDAL.EliminarTodas();
+            string ruta = GenerarClavesEmergencia(cantidad);
+            bitacora.Registrar(modulo, $"Regeneración de {cantidad} claves de emergencia", BE.Criticidad.Alta);
+            return ruta;
+        }
+
+        // Claves de emergencia todavía disponibles.
+        public int ContarClavesEmergenciaDisponibles()
+        {
+            return claveDAL.ContarDisponibles();
+        }
+
+        // Autodesbloqueo de un Administrador bloqueado mediante una clave de emergencia de un solo uso.
+        // Valida: usuario existe, es Administrador y está bloqueado; la clave es válida y no usada.
+        // Si todo OK: consume la clave (uso único), desbloquea la cuenta y registra en bitácora.
+        public bool DesbloquearConClaveEmergencia(string modulo, string username, string clavePlana)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(clavePlana))
+                throw new BE.AppException("err.bll.emergencia.campos",
+                    "Ingresá tu usuario y una clave de emergencia.");
+
+            string user  = username.Trim();
+            string clave = clavePlana.Trim().ToUpperInvariant();   // las claves son en mayúsculas
+
+            var usuario = usuarioDAL.ObtenerPorUsername(user);
+            if (usuario == null)
+                throw new BE.AppException("err.bll.emergencia.invalida",
+                    "Usuario o clave de emergencia inválidos.");
+
+            // Solo Administradores pueden autodesbloquearse con clave de emergencia.
+            string perfil = usuario.Perfil ?? "";
+            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
+                throw new BE.AppException("err.bll.emergencia.solo_admin",
+                    "Las claves de emergencia solo desbloquean cuentas de Administrador.");
+
+            if (!usuario.Bloqueado)
+                throw new BE.AppException("err.bll.emergencia.no_bloqueada",
+                    "La cuenta no está bloqueada: podés iniciar sesión normalmente.");
+
+            var disponibles = claveDAL.ObtenerDisponibles();
+            if (disponibles.Count == 0)
+                throw new BE.AppException("err.bll.emergencia.sin_claves",
+                    "No quedan claves de emergencia. Pedile a otro Administrador que genere un nuevo set.");
+
+            foreach (var kv in disponibles)
+            {
+                if (!Encriptador.VerificarContrasena(clave, kv.Value)) continue;
+
+                // Consumir la clave (uso único). Si otro la consumió en paralelo, abortar.
+                if (!claveDAL.MarcarUsada(kv.Key, user))
+                    break;
+
+                usuarioDAL.Desbloquear(usuario.Id);
+                bitacora.RegistrarSinSesion(
+                    modulo:     modulo ?? "Login",
+                    actividad:  "Desbloqueo con Clave de Emergencia",
+                    criticidad: BE.Criticidad.Alta,
+                    idUsuario:  usuario.Id,
+                    detalle:    $"La cuenta '{user}' se autodesbloqueó con una clave de emergencia a las {DateTime.Now:HH:mm:ss}. Claves restantes: {claveDAL.ContarDisponibles()}.");
+                return true;
+            }
+
+            throw new BE.AppException("err.bll.emergencia.invalida",
+                "Usuario o clave de emergencia inválidos.");
         }
 
         // Retorna el usuario en sesión (con sus permisos) desde el SessionManager.

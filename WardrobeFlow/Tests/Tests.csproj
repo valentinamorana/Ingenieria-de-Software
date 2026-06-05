@@ -39,6 +39,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CasosPruebaEspecialesTests.cs" />
+    <Compile Include="ClaveEmergenciaTests.cs" />
     <Compile Include="DigitoVerificadorTests.cs" />
     <Compile Include="EncriptadorTests.cs" />
     <Compile Include="CompositeTests.cs" />

@@ -62,9 +62,18 @@ namespace BLL
             ValidarPermiso(BE.Patentes.Stock);
             if (!prenda.TransicionPermitida(nuevoEstado))
             {
-                string motivo = prenda.MotivoTransicionNoPermitida(nuevoEstado)
-                                ?? $"Transición no permitida: {prenda.Estado} → {nuevoEstado}.";
-                throw new BE.AppException("err.bll.prenda.transicion_invalida", motivo);
+                // Se lanza una clave traducible por caso (antes el motivo era texto fijo en
+                // español que el traductor no podía localizar).
+                if (prenda.Estado == BE.EstadoPrenda.Baja)
+                    throw new BE.AppException("err.bll.prenda.transicion_baja",
+                        "Una prenda dada de baja no puede cambiar de estado.");
+                if (prenda.Estado == BE.EstadoPrenda.EnUso)
+                    throw new BE.AppException("err.bll.prenda.transicion_enuso",
+                        "No se puede cambiar manualmente el estado de una prenda en uso.\n" +
+                        "El estado se actualiza automáticamente al procesar pedidos.");
+                throw new BE.AppException("err.bll.prenda.transicion_generica",
+                    "La transición de '{0}' a '{1}' no está permitida.",
+                    prenda.Estado.ToString(), nuevoEstado.ToString());
             }
 
             int? idCliente = nuevoEstado == BE.EstadoPrenda.EnUso
@@ -98,6 +107,15 @@ namespace BLL
 
         public List<BE.MantenimientoPrenda> ObtenerHistorialMantenimiento(int idPrenda)
             => dalMantenimiento.ObtenerPorPrenda(idPrenda);
+
+        public List<BE.MantenimientoPrenda> ObtenerEnMantenimiento()
+        {
+            var todos    = dalMantenimiento.ObtenerTodos();
+            var abiertos = new List<BE.MantenimientoPrenda>();
+            foreach (var m in todos)
+                if (m.EstaAbierto) abiertos.Add(m);
+            return abiertos;
+        }
 
         // Devuelve el resumen de ocupación del stock para el Dashboard.
         public BE.OcupacionStock ObtenerOcupacion()

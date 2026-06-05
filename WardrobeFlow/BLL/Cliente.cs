@@ -82,7 +82,7 @@ namespace BLL
             var actual = dalCliente.ObtenerPorId(cliente.IdCliente);
 
             // Bloquear si el nuevo plan tiene menos capacidad que prendas en uso
-            if (cliente.IdPlan.HasValue && cliente.IdPlan != actual?.IdPlan)
+            if (actual != null && cliente.IdPlan.HasValue && cliente.IdPlan != actual.IdPlan)
             {
                 var nuevoPlan = dalPlan.ObtenerPorId(cliente.IdPlan.Value);
                 if (nuevoPlan != null && actual.StockUtilizado > nuevoPlan.LimitePrendas)
@@ -199,6 +199,14 @@ namespace BLL
                 if (!char.IsDigit(c))
                     throw new BE.AppException("err.bll.cliente.dni_numeros",
                         "El DNI solo puede contener números.");
+
+            if (!cliente.FechaNacimiento.HasValue)
+                throw new BE.AppException("err.bll.cliente.fechanac_requerida",
+                    "La fecha de nacimiento es obligatoria.");
+
+            if (cliente.FechaNacimiento.Value.Date > DateTime.Today.AddYears(-18))
+                throw new BE.AppException("err.bll.cliente.menor_edad",
+                    "El cliente debe ser mayor de 18 años.");
         }
     }
 }

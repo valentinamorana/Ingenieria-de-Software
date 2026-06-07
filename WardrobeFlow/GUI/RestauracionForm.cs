@@ -51,7 +51,7 @@ namespace GUI
                 Anchor        = AnchorStyles.Top | AnchorStyles.Right,
                 FlatStyle     = FlatStyle.Flat,
                 Font          = new Font("Segoe UI", 8.5f),
-                ForeColor     = Color.FromArgb(146, 62, 96),
+                ForeColor     = Color.FromArgb(176, 62, 96),
                 BackColor     = Color.White,
                 DisplayMember = "Nombre",
                 ValueMember   = "Id"
@@ -63,8 +63,9 @@ namespace GUI
             pnlHeader.Controls.Add(_cmbIdioma);
             _cmbIdioma.BringToFront();
 
-            // Limitar ancho del subtítulo para que no llegue hasta el combo
-            lblSubtitulo.MaximumSize = new Size(pnlHeader.Width - w - 40, 0);
+            // El subtítulo va DEBAJO del combo, así que puede usar el ancho completo del header
+            // (antes se le restaba el ancho del combo y el texto se cortaba).
+            lblSubtitulo.Size = new Size(pnlHeader.Width - 40, lblSubtitulo.Height);
 
             SeleccionarIdioma(GestorIdioma.IdiomaActual?.Id ?? "ES");
         }
@@ -118,7 +119,7 @@ namespace GUI
             lblTitulo.Text          = T("lbl.rest.titulo",    "Integridad del Sistema Comprometida");
             lblSubtitulo.Text       = T("lbl.rest.subtitulo", "Se detectaron discrepancias en los dígitos verificadores. El acceso está bloqueado.");
             lblDetalle.Text         = T("lbl.rest.detalle",   "Detalle del error:");
-            btnRecalcular.Text      = T("btn.rest.recalcular","Recalcular Dígitos Verificadores");
+            btnRecalcular.Text      = T("btn.rest.recalcular","Recalcular Dígitos");
             btnRestaurarBackup.Text = T("btn.rest.backup",    "Restaurar desde Backup");
             btnSalir.Text           = T("btn.rest.salir",     "Salir");
 
@@ -199,7 +200,7 @@ namespace GUI
 
                 using (var ofd = new OpenFileDialog())
                 {
-                    ofd.Filter = "Copia de Seguridad SQL (*.bak)|*.bak";
+                    ofd.Filter = "Copias de Seguridad (*.wfbak;*.bak)|*.wfbak;*.bak";
                     ofd.Title  = "Seleccionar Backup para Restaurar";
 
                     if (ofd.ShowDialog() != DialogResult.OK) return;
@@ -212,9 +213,23 @@ namespace GUI
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning) != DialogResult.Yes) return;
 
+                    // Si el backup está cifrado (.wfbak), pedir la contraseña para descifrarlo.
+                    string clave = null;
+                    if (Backup.EsCifrado(ofd.FileName))
+                    {
+                        using (var dlg = new InputDialog(
+                            TC("dlg.backup.clave.titulo", "Contraseña del backup"),
+                            TC("dlg.backup.clave.ingresar", "Ingresá la contraseña con la que se cifró este backup:"),
+                            esPassword: true))
+                        {
+                            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                            clave = dlg.InputText;
+                        }
+                    }
+
                     try
                     {
-                        new Backup().RestaurarBackup("RestauracionIntegridad", ofd.FileName);
+                        new Backup().RestaurarBackup("RestauracionIntegridad", ofd.FileName, clave);
                         var t2 = Servicios.Multiidioma.Traductor.ObtenerTraducciones(Servicios.Multiidioma.GestorIdioma.IdiomaActual);
                         string T2(string k, string fb) => t2.ContainsKey(k) ? t2[k].Texto : fb;
                         MessageBox.Show(T2("msg.backup.restauradaexito", "Base de datos restaurada con éxito.\nLa aplicación se reiniciará."),

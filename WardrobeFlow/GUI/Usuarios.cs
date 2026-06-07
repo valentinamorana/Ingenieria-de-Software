@@ -110,18 +110,17 @@ namespace GUI
 
             var items = new[]
             {
-                // Roles de la jerarquía nueva (T04)
+                // Jerarquía consolidada (2da entrega):
+                //   Comercial:   GerenteComercial ⊃ Vendedor
+                //   Inventario:  GerenteInventario ⊃ OperadorLogistico + OperadorDeInventario
+                //   Transversal: Auditor (solo lectura) · Administrador (todo)
                 new PerfilItem("Administrador",       TT("perfil.administrador",       "Administrador")),
                 new PerfilItem("Auditor",             TT("perfil.auditor",             "Auditor")),
                 new PerfilItem("GerenteComercial",    TT("perfil.gerentecomercial",    "Gerente Comercial")),
                 new PerfilItem("Vendedor",            TT("perfil.vendedor",            "Vendedor")),
                 new PerfilItem("GerenteInventario",   TT("perfil.gerenteinventario",   "Gerente de Inventario")),
-                new PerfilItem("EncargadoDeStock",    TT("perfil.encargadodestock",    "Encargado de Stock")),
+                new PerfilItem("OperadorDeInventario",TT("perfil.operador",            "Operador de Inventario")),
                 new PerfilItem("OperadorLogistico",   TT("perfil.operadorlogistico",   "Operador Logístico")),
-                // Roles legacy (mantenidos por compatibilidad)
-                new PerfilItem("Supervisor",          TT("perfil.supervisor",          "Supervisor (legacy)")),
-                new PerfilItem("ControladorDeStock",  TT("perfil.stock",               "Controlador de Stock (legacy)")),
-                new PerfilItem("OperadorDeInventario",TT("perfil.operador",            "Operador de Inventario (legacy)")),
             };
 
             int prevIdx = cmbPerfil.SelectedIndex < 0 ? 2 : cmbPerfil.SelectedIndex;
@@ -182,7 +181,7 @@ namespace GUI
             {
                 Tag       = "btn.usr.resetmasivo",
                 Text      = "Resetear todas las claves a temporal",
-                Size      = new Size(216, 30),
+                Size      = new Size(210, 30),
                 Location  = new Point(12, btnDesbloquear.Bottom + 20),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(80, 80, 80),
@@ -199,7 +198,7 @@ namespace GUI
             {
                 Tag       = "btn.usr.recalculardv",
                 Text      = "Recalcular integridad (DV)",
-                Size      = new Size(216, 30),
+                Size      = new Size(210, 30),
                 Location  = new Point(12, _btnResetMasivo.Bottom + 8),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(40, 80, 140),
@@ -216,7 +215,7 @@ namespace GUI
             {
                 Tag       = "btn.usr.eliminar",
                 Text      = "🗑 Archivar usuario",
-                Size      = new Size(216, 30),
+                Size      = new Size(210, 30),
                 Location  = new Point(12, _btnRecalcularDV.Bottom + 18),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(170, 50, 50),
@@ -233,7 +232,7 @@ namespace GUI
             {
                 Tag       = "btn.usr.verarchivados",
                 Text      = "Ver archivados",
-                Size      = new Size(106, 28),
+                Size      = new Size(102, 28),
                 Location  = new Point(12, _btnEliminar.Bottom + 8),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(110, 110, 120),
@@ -249,8 +248,8 @@ namespace GUI
             {
                 Tag       = "btn.usr.purgar",
                 Text      = "Purgar (>1 año)",
-                Size      = new Size(106, 28),
-                Location  = new Point(122, _btnEliminar.Bottom + 8),
+                Size      = new Size(102, 28),
+                Location  = new Point(120, _btnEliminar.Bottom + 8),
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(60, 60, 70),
                 ForeColor = Color.White,
@@ -260,6 +259,11 @@ namespace GUI
             _btnPurgar.FlatAppearance.BorderSize = 0;
             _btnPurgar.Click += BtnPurgar_Click;
             panelAlta.Controls.Add(_btnPurgar);
+
+            // El cartel de estado va al FINAL del panel, debajo de TODOS los botones. Antes estaba
+            // fijo (Designer) en una Y que se superponía con estos botones agregados por código.
+            lblMensaje.Location = new Point(12, _btnPurgar.Bottom + 14);
+            lblMensaje.Size     = new Size(210, 48);
 
             // Campo de contraseña oculto: la contraseña se genera automáticamente en la BLL.
             lblPass.Visible      = false;

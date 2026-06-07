@@ -23,6 +23,28 @@ namespace BLL
         private const string RolAdministrador    = BE.Roles.Administrador;
         private const string ClaveTemporalDefault = "Wardrobe1!";
 
+        // Bloqueo PROGRESIVO: duración (en minutos) según cuántas veces ya se bloqueó la cuenta.
+        // 1er bloqueo → 1 min, 2do → 5, 3ro → 15, 4to → 60; superada la escala, queda permanente.
+        private static readonly int[] _minutosBloqueo = { 1, 5, 15, 60 };
+
+        // Evalúa una cuenta bloqueada. Devuelve:
+        //   expirado    = el bloqueo TEMPORAL ya venció → se puede reactivar y continuar.
+        //   permanente  = no auto-expira (bloqueo manual del admin, sin fecha, o escala agotada).
+        //   minutosRest = minutos que faltan si todavía no expiró.
+        private static (bool expirado, bool permanente, int minutosRestantes) EvaluarBloqueo(BE.Usuario u)
+        {
+            // Sin fecha de bloqueo (bloqueo manual del admin o BD sin migrar) → no auto-expira.
+            if (!u.FechaBloqueo.HasValue) return (false, true, 0);
+            // Escala agotada → bloqueo permanente.
+            if (u.CantidadBloqueos <= 0 || u.CantidadBloqueos > _minutosBloqueo.Length)
+                return (false, true, 0);
+
+            int minutos = _minutosBloqueo[u.CantidadBloqueos - 1];
+            double transcurridos = (DateTime.Now - u.FechaBloqueo.Value).TotalMinutes;
+            if (transcurridos >= minutos) return (true, false, 0);
+            return (false, false, (int)Math.Ceiling(minutos - transcurridos));
+        }
+
         // RF-10 — Días de retención antes de habilitar la purga física de un usuario archivado.
         // Como en una empresa real: el ex-empleado queda "archivado" 1 año (no contamina la
         // operación ni las métricas) y recién después puede eliminarse definitivamente.
@@ -73,9 +95,22 @@ namespace BLL
             }
 
             if (usuario.Bloqueado)
-                throw new BE.LoginException(BE.LoginException.TipoError.CuentaBloqueada,
-                    $"La cuenta '{username}' está bloqueada.\n" +
-                    "Contactá al Administrador para que la reactive desde Administrar → Usuarios.");
+            {
+                var (expirado, permanente, minutos) = EvaluarBloqueo(usuario);
+                if (permanente)
+                    throw new BE.LoginException(BE.LoginException.TipoError.CuentaBloqueada,
+                        $"La cuenta '{username}' está bloqueada.\n" +
+                        "Contactá al Administrador (o usá una clave de emergencia) para reactivarla.");
+                if (!expirado)
+                    throw new BE.LoginException(BE.LoginException.TipoError.CuentaBloqueada,
+                        $"La cuenta '{username}' está bloqueada temporalmente.\n" +
+                        $"Reintentá en {minutos} minuto(s) o usá una clave de emergencia.");
+
+                // El bloqueo temporal EXPIRÓ → se reactiva sola y el login continúa normalmente.
+                usuarioDAL.AutoDesbloquear(usuario.Id);
+                usuario.Bloqueado        = false;
+                usuario.IntentosFallidos = 0;
+            }
 
             bool esValido = Encriptador.VerificarContrasena(contraseña, usuario.Contraseña);
 
@@ -99,13 +134,20 @@ namespace BLL
 
                 if (intentos >= MaxIntentosFallidos)
                 {
-                    usuarioDAL.Bloquear(usuario.Id);
+                    // Bloqueo PROGRESIVO: cada bloqueo dura más (1/5/15/60 min) y tras agotar la
+                    // escala queda permanente (requiere admin / clave de emergencia).
+                    usuarioDAL.BloquearConTiempo(usuario.Id);
                     RegistrarBloqueo(modulo, username, usuario.Id);
 
-                    throw new BE.LoginException(BE.LoginException.TipoError.CuentaBloqueada,
-                        $"La cuenta '{username}' ha sido bloqueada tras {MaxIntentosFallidos} " +
-                        "intentos fallidos consecutivos.\n" +
-                        "Contactá al Administrador para reactivarla.");
+                    int nuevaCantidad = usuario.CantidadBloqueos + 1;
+                    string msgBloqueo = nuevaCantidad > _minutosBloqueo.Length
+                        ? $"La cuenta '{username}' fue bloqueada permanentemente tras varios bloqueos.\n" +
+                          "Contactá al Administrador (o usá una clave de emergencia) para reactivarla."
+                        : $"La cuenta '{username}' fue bloqueada por {_minutosBloqueo[nuevaCantidad - 1]} " +
+                          $"minuto(s) tras {MaxIntentosFallidos} intentos fallidos.\n" +
+                          "Reintentá más tarde o usá una clave de emergencia.";
+
+                    throw new BE.LoginException(BE.LoginException.TipoError.CuentaBloqueada, msgBloqueo);
                 }
 
                 int restantes = MaxIntentosFallidos - intentos;
@@ -424,15 +466,16 @@ namespace BLL
         {
             switch (perfil.Trim())
             {
-                // Roles legacy
-                case "Controlador de Stock":    return "ControladorDeStock";
-                case "Operador de Inventario":  return "OperadorDeInventario";
-                case "Operador Logístico":      return "OperadorLogistico";
-                // Nuevos roles (T04 jerarquía)
+                // Jerarquía consolidada (2da entrega)
+                case "Operador de Inventario":  return "OperadorDeInventario"; // mantenimiento de prendas
+                case "Operador Logístico":      return "OperadorLogistico";    // pedidos / despacho
                 case "Gerente Comercial":       return "GerenteComercial";
                 case "Gerente de Inventario":   return "GerenteInventario";
-                case "Encargado de Stock":      return "EncargadoDeStock";
                 case "Auditor":                 return "Auditor";
+                // Roles retirados → se mapean a su reemplazo (por si llega una etiqueta vieja)
+                case "Controlador de Stock":    return "OperadorDeInventario";
+                case "Encargado de Stock":      return "OperadorDeInventario";
+                case "Supervisor":              return "GerenteComercial";
                 default:                        return perfil.Trim();
             }
         }

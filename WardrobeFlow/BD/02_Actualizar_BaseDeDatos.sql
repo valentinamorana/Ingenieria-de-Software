@@ -441,6 +441,32 @@ GO
 UPDATE Usuario SET Activo = 1 WHERE Activo IS NULL;
 GO
 
+-- Bloqueo de login PROGRESIVO (Etapa 3): escalado temporal de bloqueos por intentos fallidos.
+-- CantidadBloqueos: cuántas veces se bloqueó la cuenta (define la duración: 1/5/15/60 min).
+-- FechaBloqueo:     instante del último bloqueo (para calcular cuándo expira). NULL = no bloqueada
+--                   por tiempo (o bloqueo manual del admin, que no auto-expira).
+-- NO forman parte del DVH: son metadata operativa anti-fuerza-bruta, no identidad protegida.
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_NAME='Usuario' AND COLUMN_NAME='CantidadBloqueos')
+BEGIN
+    ALTER TABLE Usuario ADD CantidadBloqueos INT NOT NULL DEFAULT 0;
+    PRINT 'Columna CantidadBloqueos agregada a Usuario (bloqueo progresivo).';
+END
+ELSE
+    PRINT 'Usuario.CantidadBloqueos ya existe — sin cambios.';
+GO
+IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_NAME='Usuario' AND COLUMN_NAME='FechaBloqueo')
+BEGIN
+    ALTER TABLE Usuario ADD FechaBloqueo DATETIME NULL;
+    PRINT 'Columna FechaBloqueo agregada a Usuario (bloqueo progresivo).';
+END
+ELSE
+    PRINT 'Usuario.FechaBloqueo ya existe — sin cambios.';
+GO
+UPDATE Usuario SET CantidadBloqueos = 0 WHERE CantidadBloqueos IS NULL;
+GO
+
 -- Claves de emergencia (1 solo uso) para autodesbloqueo de un Administrador.
 -- Hasheadas (PBKDF2); el .txt con las claves en texto plano es la copia del admin.
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'ClaveRecuperacion')
@@ -749,6 +775,82 @@ INNER JOIN Permiso pr ON pr.Nombre = rp.Rol AND pr.EsRol = 1 AND pr.IdPermiso <>
 WHERE  NOT EXISTS (SELECT 1 FROM PermisoRelacion x
                    WHERE x.IdPadre = pr.IdPermiso AND x.IdHijo = rp.IdPermiso);
 PRINT 'Permisos de Supervisor actualizados (mnuPrendas/mnuClientes/mnuPlanSuscripciones/mnuPedidosVenta).';
+GO
+
+-- ============================================================
+-- CONSOLIDACIÓN DE ROLES (v8) — decisión de diseño 2da entrega
+-- Va AL FINAL de todas las migraciones de roles (después de la última regeneración de
+-- aristas desde RolPermiso) para que el estado objetivo no sea sobreescrito. Idempotente.
+--   • Inventario — dos operadores con responsabilidades CLARAS, sin duplicados:
+--       - OperadorLogistico    → pedidos / despacho       (Ver Pedidos Realizados)
+--       - OperadorDeInventario → mantenimiento de prendas (Ver Prendas + Gestionar Stock)
+--       - GerenteInventario ⊃ AMBOS                       (+ Categorías + Outfits)
+--     Se RETIRAN EncargadoDeStock y ControladorDeStock (eran redundantes con lo anterior).
+--   • Comercial — se RETIRA Supervisor; el jefe es GerenteComercial ⊃ Vendedor.
+-- ============================================================
+
+-- (a) Asegurar el nodo-rol OperadorDeInventario (por si la BD no lo tenía).
+INSERT INTO Permiso (Nombre, NombreMenu, TipoComponente, Estado, EsFamilia, EsRol)
+SELECT 'OperadorDeInventario', 'OperadorDeInventario', 'Rol', 1, 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM Permiso WHERE Nombre = 'OperadorDeInventario' AND EsRol = 1);
+GO
+
+-- (b) OperadorDeInventario: sus patentes propias deben ser EXACTAMENTE Prendas + Stock.
+--     Se quita cualquier patente vieja (p. ej. el legacy 'Ver Pedidos Realizados') y se agregan las nuevas.
+DELETE r FROM PermisoRelacion r
+JOIN Permiso rol ON rol.IdPermiso = r.IdPadre AND rol.Nombre = 'OperadorDeInventario' AND rol.EsRol = 1
+JOIN Permiso pat ON pat.IdPermiso = r.IdHijo  AND ISNULL(pat.EsRol,0) = 0
+WHERE pat.NombreMenu NOT IN ('mnuPrendas','mnuStock');
+INSERT INTO PermisoRelacion (IdPadre, IdHijo)
+SELECT rol.IdPermiso, pat.IdPermiso
+FROM (VALUES ('mnuPrendas'), ('mnuStock')) AS v(NombreMenu)
+JOIN Permiso rol ON rol.Nombre = 'OperadorDeInventario' AND rol.EsRol = 1
+JOIN Permiso pat ON pat.NombreMenu = v.NombreMenu AND ISNULL(pat.EsFamilia,0) = 0 AND ISNULL(pat.EsRol,0) = 0
+WHERE NOT EXISTS (SELECT 1 FROM PermisoRelacion x WHERE x.IdPadre = rol.IdPermiso AND x.IdHijo = pat.IdPermiso);
+GO
+
+-- (c) GerenteInventario ⊃ OperadorLogistico + OperadorDeInventario (y se quita la arista vieja a EncargadoDeStock).
+DELETE r FROM PermisoRelacion r
+JOIN Permiso gi ON gi.IdPermiso = r.IdPadre AND gi.Nombre = 'GerenteInventario' AND gi.EsRol = 1
+JOIN Permiso ed ON ed.IdPermiso = r.IdHijo  AND ed.Nombre = 'EncargadoDeStock'  AND ed.EsRol = 1;
+INSERT INTO PermisoRelacion (IdPadre, IdHijo)
+SELECT gi.IdPermiso, h.IdPermiso
+FROM (VALUES ('OperadorLogistico'), ('OperadorDeInventario')) AS v(Hijo)
+JOIN Permiso gi ON gi.Nombre = 'GerenteInventario' AND gi.EsRol = 1
+JOIN Permiso h  ON h.Nombre  = v.Hijo AND h.EsRol = 1
+WHERE NOT EXISTS (SELECT 1 FROM PermisoRelacion x WHERE x.IdPadre = gi.IdPermiso AND x.IdHijo = h.IdPermiso);
+GO
+
+-- (d) Migrar usuarios de los roles que se retiran + normalizar Perfil a código interno.
+DECLARE @rolesCambiados INT = 0;
+UPDATE Usuario SET Rol = 'OperadorDeInventario', Perfil = 'OperadorDeInventario'
+WHERE Rol IN ('EncargadoDeStock','ControladorDeStock') OR Perfil IN ('EncargadoDeStock','ControladorDeStock','Controlador de Stock');
+SET @rolesCambiados = @rolesCambiados + @@ROWCOUNT;
+UPDATE Usuario SET Rol = 'GerenteComercial', Perfil = 'GerenteComercial'
+WHERE Rol = 'Supervisor' OR Perfil = 'Supervisor';
+SET @rolesCambiados = @rolesCambiados + @@ROWCOUNT;
+-- Normalizar perfiles legacy guardados con el NOMBRE VISIBLE (con espacios) al código interno,
+-- para que el switch de dashboard por Perfil y las comparaciones de rol funcionen igual que con los nuevos.
+UPDATE Usuario SET Perfil = 'OperadorDeInventario' WHERE Perfil = 'Operador de Inventario';
+SET @rolesCambiados = @rolesCambiados + @@ROWCOUNT;
+UPDATE Usuario SET Perfil = 'OperadorLogistico' WHERE Perfil = 'Operador Logístico';
+SET @rolesCambiados = @rolesCambiados + @@ROWCOUNT;
+
+-- (e) Retirar los roles redundantes: quitar TODAS sus aristas (como padre o como hijo) y desactivar el nodo.
+DELETE r FROM PermisoRelacion r
+JOIN Permiso p ON (p.IdPermiso = r.IdPadre OR p.IdPermiso = r.IdHijo)
+WHERE p.EsRol = 1 AND p.Nombre IN ('EncargadoDeStock','ControladorDeStock','Supervisor');
+UPDATE Permiso SET Estado = 0 WHERE EsRol = 1 AND Nombre IN ('EncargadoDeStock','ControladorDeStock','Supervisor');
+
+-- (f) Si cambió el Rol/Perfil de algún usuario, el DVH (que incluye el Rol) quedó desfasado:
+--     resetear el DV de Usuario para que la app lo recalcule limpio en el próximo arranque.
+IF @rolesCambiados > 0
+BEGIN
+    UPDATE Usuario SET DVH = 0;
+    UPDATE DVVertical SET DVV = 0 WHERE NombreTabla = 'Usuario';
+    PRINT 'Roles consolidados; DV de Usuario reseteado para recálculo en el próximo arranque.';
+END
+PRINT 'Consolidación de roles (v8) aplicada.';
 GO
 
 -- MantenimientoPrenda (historial de limpieza/mantenimiento por prenda)

@@ -246,6 +246,42 @@ namespace GUI
             integridadToolStripMenuItem.Visible = tieneUsuarios;
         }
 
+        // ── Etapa 2 — Re-aplicación de seguridad EN VIVO (patrón ManejadorSeguridad de Stach) ──
+
+        /// <summary>
+        /// Re-resuelve los permisos efectivos del usuario en sesión desde la BD y re-aplica la
+        /// visibilidad del menú, sin necesidad de cerrar sesión. Útil tras editar roles/permisos
+        /// en "Gestión de Permisos": si se modificó el rol del usuario actual, su menú se actualiza
+        /// al instante (los cambios sobre OTROS roles impactan a esos usuarios en su próximo login).
+        /// </summary>
+        public void RefrescarSeguridad()
+        {
+            if (!Seguridad.SessionManager.IsLoggedIn) return;
+            try
+            {
+                var usuario  = Seguridad.SessionManager.GetInstance().Usuario;
+                var permisos = new BLL.Familia().ObtenerPermisosEfectivos(usuario.Rol ?? usuario.Perfil);
+                usuario.Permisos = permisos;   // _usuarioActivo es la MISMA referencia que la sesión
+                AplicarPermisos(permisos);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("[Menu.RefrescarSeguridad] " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Localiza el Menú abierto (formulario MDI padre) y le re-aplica la seguridad. Seguro de
+        /// llamar desde cualquier formulario hijo tras un cambio de permisos.
+        /// </summary>
+        public static void RefrescarSeguridadAbierta()
+        {
+            foreach (Form f in Application.OpenForms)
+            {
+                if (f is Menu m) { m.RefrescarSeguridad(); return; }
+            }
+        }
+
         /// <summary>
         /// Cierra la sesión y reinicia la aplicación para volver al Login con estado limpio.
         /// </summary>
@@ -328,10 +364,13 @@ namespace GUI
             Form dash;
             switch (perfil)
             {
-                case "Vendedor":             dash = new DashboardVendedor();    break;
-                case "ControladorDeStock":   dash = new DashboardControlStock(); break;
-                case "OperadorDeInventario": dash = new DashboardOperador();    break;
-                case "Supervisor":           dash = new DashboardSupervisor();  break;
+                case "Vendedor":             dash = new DashboardVendedor();     break;
+                // Inventario consolidado: OperadorDeInventario = mantenimiento de prendas/stock,
+                // OperadorLogistico = pedidos/despacho. Cada uno usa el dashboard acorde.
+                case "OperadorDeInventario": dash = new DashboardControlStock(); break;
+                case "OperadorLogistico":    dash = new DashboardOperador();     break;
+                // Gerentes / Auditor / Administrador → dashboard general (se adapta por permisos;
+                // la "Actividad reciente" solo aparece con permiso de auditoría).
                 default:                     dash = new DashboardForm(_usuarioActivo?.Permisos); break;
             }
             dash.MdiParent = this;
@@ -641,6 +680,11 @@ namespace GUI
         /// </summary>
         public void UpdateLanguage(Idioma idioma)
         {
+            // Reconstruir el combo por si cambió el CONJUNTO de idiomas disponibles
+            // (p. ej. el admin activó/creó un idioma en Gestión de Idiomas): así el nuevo
+            // idioma aparece al instante en el dropdown, sin reiniciar la aplicación.
+            if (GestorIdioma.IdiomasDisponibles != null && GestorIdioma.IdiomasDisponibles.Count > 0)
+                ReconstruirComboIdioma(GestorIdioma.IdiomasDisponibles);
             Traducir(idioma);
             SeleccionarIdiomaEnCombo(idioma.Id);
         }

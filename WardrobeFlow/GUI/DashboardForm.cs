@@ -39,6 +39,9 @@ namespace GUI
 
         // ── Visibilidad por rol ───────────────────────────────────────────────
         private readonly bool _verPrendas, _verClientes, _verPedidos, _verBackup, _verStock;
+        // Actividad reciente = bitácora del sistema (dato sensible de auditoría): solo se muestra
+        // a quien tiene permiso de ver la auditoría (Administrador / Auditor), no a roles operativos.
+        private readonly bool _verActividad;
 
         // ── Controles de tarjetas (null si el rol no tiene permiso) ───────────
         private Label _numPrendas,  _txtPrendas;
@@ -82,6 +85,7 @@ namespace GUI
             _verPedidos  = nombres.Contains("mnuPedidosVenta") || nombres.Contains("mnuPedidosRealizados");
             _verBackup   = nombres.Contains("mnuUsuarios");
             _verStock    = nombres.Contains("mnuStock");
+            _verActividad = nombres.Contains("mnuAuditoria");
 
             this.Text            = "Panel de Control";
             this.Size            = new Size(870, 570);
@@ -352,7 +356,7 @@ namespace GUI
                 {
                     Text = T("dash.cfg.guardar", "Guardar"), Left = 80, Top = 104, Width = 90, Height = 30,
                     DialogResult = DialogResult.OK,
-                    BackColor    = Color.FromArgb(146, 62, 96),
+                    BackColor    = Color.FromArgb(176, 62, 96),
                     ForeColor    = Color.White, FlatStyle = FlatStyle.Flat
                 };
                 btnOk.FlatAppearance.BorderSize = 0;
@@ -460,7 +464,7 @@ namespace GUI
 
             if (_verPedidos)
                 _flowCards.Controls.Add(CrearTarjeta(
-                    Color.FromArgb(236, 196, 215), Color.FromArgb(146, 62, 96),
+                    Color.FromArgb(236, 196, 215), Color.FromArgb(176, 62, 96),
                     out _numPedidos, out _txtPedidos, out _));
 
             if (_verBackup)
@@ -507,6 +511,10 @@ namespace GUI
             };
 
             // ── Panel Actividad Reciente ──────────────────────────────────────
+            // Solo para quien puede ver la auditoría (Administrador / Auditor). Los roles
+            // operativos (Operador, Vendedor, etc.) no ven la bitácora en su dashboard.
+            if (_verActividad)
+            {
             _panelActividad = new Panel
             {
                 Dock      = DockStyle.Left,
@@ -519,7 +527,7 @@ namespace GUI
             {
                 Text      = "Actividad reciente",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(146, 62, 96),
+                ForeColor = Color.FromArgb(176, 62, 96),
                 Dock      = DockStyle.Top,
                 Height    = 28,
                 Padding   = new Padding(10, 6, 0, 0),
@@ -554,6 +562,7 @@ namespace GUI
             _panelActividad.Controls.Add(_dgvActividad);
             _panelActividad.Controls.Add(_lblActTitulo);
             _panelActividad.Tag = _dgvActividad;
+            } // fin if (_verActividad)
 
             // ── Panel Mini-Stats ──────────────────────────────────────────────
             _panelMiniStats = new Panel
@@ -607,12 +616,14 @@ namespace GUI
 
             // ── Área central (actividad + mini-stats) ─────────────────────────
             var panelCentro = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(240, 240, 245) };
-            panelCentro.Controls.Add(_panelMiniStats);
-            panelCentro.Controls.Add(_panelActividad);
+            panelCentro.Controls.Add(_panelMiniStats);   // Dock=Fill: ocupa todo si no hay actividad
+            if (_panelActividad != null)
+                panelCentro.Controls.Add(_panelActividad);
 
-            // Ajustar anchuras al arrancar y en resize
+            // Ajustar anchuras al arrancar y en resize (solo si existe el panel de actividad)
             void AjustarAnchuras()
             {
+                if (_panelActividad == null) return;
                 int w = panelCentro.ClientSize.Width;
                 _panelActividad.Width = (int)(w * 0.55);
             }
@@ -633,7 +644,7 @@ namespace GUI
             {
                 Text      = "Mis Tareas Pendientes",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(146, 62, 96),
+                ForeColor = Color.FromArgb(176, 62, 96),
                 Dock      = DockStyle.Top,
                 Height    = 26,
                 Padding   = new Padding(10, 5, 0, 0),
@@ -743,6 +754,7 @@ namespace GUI
 
         private void CargarActividadReciente()
         {
+            if (!_verActividad) return;   // sin permiso de auditoría no se construye el panel
             Task.Run(() =>
             {
                 System.Data.DataTable dt = null;
@@ -793,7 +805,7 @@ namespace GUI
                             conteos[tipo]++;
                         }
                         foreach (var kv in conteos)
-                            fl.Controls.Add(CrearMiniStatRow(kv.Key, kv.Value.ToString(), Color.FromArgb(146, 62, 96)));
+                            fl.Controls.Add(CrearMiniStatRow(kv.Key, kv.Value.ToString(), Color.FromArgb(176, 62, 96)));
                     }
                 }));
             });

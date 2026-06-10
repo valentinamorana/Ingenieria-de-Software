@@ -58,7 +58,7 @@ namespace GUI
             {
                 Text = Tx("btn.idiomas.nuevo", "➕ Nuevo idioma"), Location = new System.Drawing.Point(280, 4),
                 Size = new System.Drawing.Size(130, 28), FlatStyle = FlatStyle.Flat,
-                BackColor = System.Drawing.Color.FromArgb(80, 100, 150), ForeColor = System.Drawing.Color.White,
+                BackColor = System.Drawing.Color.FromArgb(210, 100, 135), ForeColor = System.Drawing.Color.White,
                 Cursor = Cursors.Hand
             };
             _btnNuevoIdioma.FlatAppearance.BorderSize = 0;
@@ -68,7 +68,7 @@ namespace GUI
             {
                 Text = Tx("btn.idiomas.renombrar", "✏ Renombrar"), Location = new System.Drawing.Point(420, 4),
                 Size = new System.Drawing.Size(120, 28), FlatStyle = FlatStyle.Flat,
-                BackColor = System.Drawing.Color.FromArgb(110, 90, 150), ForeColor = System.Drawing.Color.White,
+                BackColor = System.Drawing.Color.FromArgb(176, 62, 96), ForeColor = System.Drawing.Color.White,
                 Cursor = Cursors.Hand
             };
             _btnRenombrarIdioma.FlatAppearance.BorderSize = 0;
@@ -422,6 +422,12 @@ namespace GUI
                 MostrarError(tSel.ContainsKey("msg.idiomas.seleccionar") ? tSel["msg.idiomas.seleccionar"].Texto : "Seleccioná un idioma primero.");
                 return;
             }
+
+            // Confirmar la edición en curso ANTES de leer las celdas: si el usuario tipeó una
+            // traducción y clickeó "Guardar" sin salir de la celda, el valor todavía no estaba
+            // volcado a Cells[].Value y se guardaba el texto viejo (o vacío). Esto causaba el
+            // "no se guarda la traducción" reportado.
+            dgvTraducciones.EndEdit();
 
             int guardadas = 0;
             int errores   = 0;

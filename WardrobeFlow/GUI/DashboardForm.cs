@@ -164,6 +164,17 @@ namespace GUI
                 _dgvActividad.Columns["colTipo"].HeaderText  = T("dash.col.evento",  "Evento");
                 _dgvActividad.Columns["colUser"].HeaderText  = T("dash.col.usuario", "Usuario");
             }
+
+            // Panel "Mis Tareas Pendientes": título y encabezados del grid (antes quedaban
+            // siempre en español porque se fijaban una sola vez al construir la UI).
+            if (_lblTareasTitulo != null)
+                _lblTareasTitulo.Text = string.Format(T("dash.tareas.titulo", "Mis Tareas Pendientes ({0})"), 0);
+            if (_dgvTareas != null && _dgvTareas.Columns.Count >= 3)
+            {
+                _dgvTareas.Columns["colTipo"].HeaderText  = T("dash.tareas.col.tipo",  "Tipo");
+                _dgvTareas.Columns["colDesc"].HeaderText  = T("dash.tareas.col.desc",  "Descripción");
+                _dgvTareas.Columns["colFecha"].HeaderText = T("dash.tareas.col.fecha", "Desde");
+            }
         }
 
         // ── Métricas ──────────────────────────────────────────────────────────
@@ -394,7 +405,7 @@ namespace GUI
             {
                 using (var br = new System.Drawing.Drawing2D.LinearGradientBrush(
                     _panelHeader.ClientRectangle,
-                    Color.FromArgb(64, 0, 64),
+                    Color.FromArgb(210, 100, 135),
                     Color.FromArgb(176, 62, 96),
                     System.Drawing.Drawing2D.LinearGradientMode.Horizontal))
                     pe.Graphics.FillRectangle(br, _panelHeader.ClientRectangle);
@@ -576,11 +587,11 @@ namespace GUI
             {
                 Text      = "Resumen de eventos",
                 Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
-                ForeColor = Color.FromArgb(64, 0, 64),
+                ForeColor = Color.FromArgb(176, 62, 96),
                 Dock      = DockStyle.Top,
                 Height    = 28,
                 Padding   = new Padding(4, 6, 0, 0),
-                BackColor = Color.FromArgb(240, 232, 248)
+                BackColor = Color.FromArgb(252, 240, 246)
             };
 
             var flStats = new FlowLayoutPanel
@@ -602,12 +613,12 @@ namespace GUI
             {
                 Dock      = DockStyle.Bottom,
                 Height    = 26,
-                BackColor = Color.FromArgb(64, 0, 64)
+                BackColor = Color.FromArgb(176, 62, 96)
             };
             _lblSesion = new Label
             {
                 Dock      = DockStyle.Fill,
-                ForeColor = Color.FromArgb(200, 180, 210),
+                ForeColor = Color.FromArgb(244, 212, 226),
                 Font      = new Font("Segoe UI", 8f),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding   = new Padding(10, 0, 0, 0)
@@ -736,7 +747,7 @@ namespace GUI
                             string desde = dias == 0 ? T("dash.hoy", "hoy") : string.Format(T("dash.hace_dias", "hace {0}d"), dias);
                             string desc  = $"#{p.IdPedido} — {p.NombreCliente ?? $"Cliente {p.IdCliente}"}";
                             var fila = _dgvTareas.Rows[_dgvTareas.Rows.Add(tipoPedido, desc, desde)];
-                            fila.DefaultCellStyle.ForeColor = dias >= 2 ? Color.FromArgb(160, 40, 40) : Color.FromArgb(40, 80, 140);
+                            fila.DefaultCellStyle.ForeColor = dias >= 2 ? Color.FromArgb(160, 40, 40) : Color.FromArgb(160, 100, 0);
                         }
 
                     if (_dgvTareas.Rows.Count == 0)
@@ -792,7 +803,7 @@ namespace GUI
                     if (fl == null) return;
                     fl.Controls.Clear();
 
-                    fl.Controls.Add(CrearMiniStatRow("Sistema (30d)", (dtN?.Rows.Count ?? 0).ToString(), Color.FromArgb(64, 0, 64)));
+                    fl.Controls.Add(CrearMiniStatRow("Sistema (30d)", (dtN?.Rows.Count ?? 0).ToString(), Color.FromArgb(176, 62, 96)));
 
                     if (dtNeg != null)
                     {

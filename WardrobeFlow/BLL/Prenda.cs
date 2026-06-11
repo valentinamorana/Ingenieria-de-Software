@@ -57,7 +57,7 @@ namespace BLL
         // Cambia el estado de una prenda validando la transición.
         // Al entrar a EnLimpieza abre un registro de mantenimiento;
         // al volver a Disponible desde EnLimpieza lo cierra.
-        public void CambiarEstado(string modulo, BE.Prenda prenda, BE.EstadoPrenda nuevoEstado)
+        public void CambiarEstado(string modulo, BE.Prenda prenda, BE.EstadoPrenda nuevoEstado, string actor = null)
         {
             ValidarPermiso(BE.Patentes.Stock);
             if (!prenda.TransicionPermitida(nuevoEstado))
@@ -84,9 +84,6 @@ namespace BLL
 
             if (nuevoEstado == BE.EstadoPrenda.EnLimpieza)
             {
-                string actor = Seguridad.SessionManager.IsLoggedIn
-                    ? Seguridad.SessionManager.GetInstance().Usuario.Username
-                    : null;
                 dalMantenimiento.IniciarMantenimiento(prenda.IdPrenda, actor);
             }
             else if (prenda.Estado == BE.EstadoPrenda.EnLimpieza &&
@@ -137,18 +134,9 @@ namespace BLL
             };
         }
 
-        // Lanza AppException si el usuario en sesión no tiene el permiso indicado.
-        // Administrador siempre pasa. Si no hay sesión activa, deja pasar (modo interno/test).
-        private static void ValidarPermiso(string nombrePatente)
-        {
-            // Fail-closed: sin sesión NO se permite la operación (apunte T04).
-            if (!Seguridad.SessionManager.IsLoggedIn)
-                throw new BE.AppException("err.bll.sesion_expirada",
-                    "La sesión expiró. Volvé a iniciar sesión.");
-            if (!Seguridad.SessionManager.GetInstance().TienePermiso(nombrePatente))
-                throw new BE.AppException("err.bll.sin_permiso",
-                    "No tiene permiso para ejecutar esta operación ('{0}').", nombrePatente);
-        }
+        // T04 — Delegado a BLLHelper para no duplicar la lógica en cada clase BLL.
+        private static void ValidarPermiso(string nombrePatente) =>
+            BLLHelper.ValidarPermiso(nombrePatente);
 
         private void Validar(BE.Prenda prenda)
         {

@@ -9,8 +9,13 @@ namespace BLL
     public class Usuario
     {
         private readonly DAL.Interfaces.IUsuarioDAL usuarioDAL;
-        private readonly BLL.Familia        perfilesBLL = new BLL.Familia();
-        private readonly Servicios.Bitacora bitacora   = new Servicios.Bitacora();
+        // perfilesBLL y bitacora son PEREZOSOS: solo se instancian cuando una operación los usa
+        // (Login resuelve permisos; las escrituras registran bitácora). Así construir BLL.Usuario
+        // —y testear con un IUsuarioDAL falso— no toca la BD a través de sus DAL internos.
+        private BLL.Familia _perfilesLazy;
+        private BLL.Familia perfilesBLL => _perfilesLazy ?? (_perfilesLazy = new BLL.Familia());
+        private Servicios.Bitacora _bitacoraLazy;
+        private Servicios.Bitacora bitacora => _bitacoraLazy ?? (_bitacoraLazy = new Servicios.Bitacora());
 
         // DI: el constructor por defecto usa el DAL real; el otro permite inyectar un doble.
         public Usuario() : this(new DAL.Usuario()) { }
@@ -20,8 +25,17 @@ namespace BLL
         }
 
         private const int    MaxIntentosFallidos  = 3;
-        private const string RolAdministrador    = BE.Roles.Administrador;
-        private const string ClaveTemporalDefault = "Wardrobe1!";
+
+        // Clave temporal por defecto para el reset masivo. Configurable en App.config
+        // (appSettings["ClaveTemporalDefault"]); si falta o está vacía, usa un fallback válido.
+        // Antes estaba hardcodeada; sacarla a config evita exponer la clave en el binario.
+        private static readonly string ClaveTemporalDefault = LeerClaveTemporalDefault();
+
+        private static string LeerClaveTemporalDefault()
+        {
+            string v = System.Configuration.ConfigurationManager.AppSettings["ClaveTemporalDefault"];
+            return string.IsNullOrWhiteSpace(v) ? "Wardrobe1!" : v;
+        }
 
         // Bloqueo PROGRESIVO: duración (en minutos) según cuántas veces ya se bloqueó la cuenta.
         // 1er bloqueo → 1 min, 2do → 5, 3ro → 15, 4to → 60; superada la escala, queda permanente.
@@ -55,14 +69,9 @@ namespace BLL
         // SessionManager.TienePermiso (que también identifica al admin por su Perfil).
         private static void ValidarEsAdministrador()
         {
-            // Fail-closed: sin sesión NO se permite la operación.
-            if (!SessionManager.IsLoggedIn)
-                throw new BE.AppException("err.bll.sesion_expirada",
-                    "La sesión expiró. Volvé a iniciar sesión.");
-            string perfil = SessionManager.GetInstance().Usuario.Perfil ?? "";
-            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
-                throw new BE.AppException("err.bll.usuario.sin_permiso",
-                    "Solo un Administrador puede gestionar usuarios.");
+            // Guard centralizado (DRY): sesión activa + rol Administrador.
+            BLLHelper.ExigirAdministrador("err.bll.usuario.sin_permiso",
+                "Solo un Administrador puede gestionar usuarios.");
         }
 
         /// <summary>Autentica al usuario y establece la sesión. Bloquea la cuenta tras 3 intentos fallidos.</summary>
@@ -306,7 +315,7 @@ namespace BLL
                 throw new BE.AppException("err.bll.usuario.autobaja",
                     "No podés archivar tu propio usuario mientras tenés la sesión abierta.");
 
-            if ((perfilObjetivo ?? "").Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase)
+            if (BE.Roles.EsAdministrador(perfilObjetivo)
                 && adminsActivos <= 1)
                 throw new BE.AppException("err.bll.usuario.ultimo_admin",
                     "No se puede archivar al último Administrador activo del sistema. " +
@@ -385,6 +394,37 @@ namespace BLL
 
         // Las claves de emergencia (autodesbloqueo de Admin) viven en BLL.RecuperacionAdmin (SRP).
 
+        // Cambio de clave por el PROPIO usuario en sesión. Lo usa el cambio OBLIGATORIO posterior
+        // al login (cuando RequiereCambioClave=1) y también puede usarlo "Mi Perfil".
+        // Valida la clave nueva, exige que difiera de la actual, persiste, baja el flag y
+        // actualiza la sesión. No requiere ser administrador: cada uno cambia SU propia clave.
+        public void CambiarClavePropia(string modulo, string claveNueva)
+        {
+            if (!SessionManager.IsLoggedIn)
+                throw new BE.SesionException("err.seg.sesion_no_iniciada",
+                    "La sesión no está iniciada. Iniciá sesión primero.");
+
+            var u = SessionManager.GetInstance().Usuario;
+
+            var (valida, mensaje) = Encriptador.ValidarContrasena(claveNueva);
+            if (!valida)
+                throw new BE.AppException("err.bll.usuario.clave_invalida", mensaje);
+
+            // La clave nueva no puede ser la misma que la actual (evita "cambiarla" por la temporal).
+            if (Encriptador.VerificarContrasena(claveNueva, u.Contraseña))
+                throw new BE.AppException("err.bll.usuario.clave_igual_actual",
+                    "La nueva contraseña no puede ser igual a la actual.");
+
+            string hash = Encriptador.Hash(claveNueva);
+            usuarioDAL.CambiarClave(u.Id, hash);
+
+            // Reflejar el cambio en la sesión para que no se vuelva a pedir.
+            u.Contraseña          = hash;
+            u.RequiereCambioClave = false;
+
+            bitacora.Registrar(modulo, "Cambio de Contrasena Propia", BE.Criticidad.Media);
+        }
+
         // Retorna el usuario en sesión (con sus permisos) desde el SessionManager.
         public BE.Usuario ObtenerUsuarioActivo()
         {
@@ -461,8 +501,7 @@ namespace BLL
 
             if (!Encriptador.VerificarContrasena(password, usuario.Contraseña)) return false;
 
-            string perfil = usuario.Perfil ?? "";
-            return perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase);
+            return usuario.EsAdministrador;
         }
 
         // Convierte el nombre visible del perfil al código interno usado en BD.

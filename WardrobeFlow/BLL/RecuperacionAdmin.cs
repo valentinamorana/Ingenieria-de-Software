@@ -19,8 +19,6 @@ namespace BLL
         private readonly DAL.Interfaces.IClaveRecuperacionDAL claveDAL;
         private readonly Servicios.Bitacora bitacora = new Servicios.Bitacora();
 
-        private const string RolAdministrador = BE.Roles.Administrador;
-
         // DI: el constructor por defecto usa los DAL reales; el otro permite inyectar dobles.
         public RecuperacionAdmin() : this(new DAL.Usuario(), new DAL.ClaveRecuperacion()) { }
         public RecuperacionAdmin(DAL.Interfaces.IUsuarioDAL usuarioDAL,
@@ -93,8 +91,7 @@ namespace BLL
                     "Usuario o clave de emergencia inválidos.");
 
             // Solo Administradores pueden autodesbloquearse con clave de emergencia.
-            string perfil = usuario.Perfil ?? "";
-            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
+            if (!usuario.EsAdministrador)
                 throw new BE.AppException("err.bll.emergencia.solo_admin",
                     "Las claves de emergencia solo desbloquean cuentas de Administrador.");
 
@@ -140,13 +137,8 @@ namespace BLL
         // Fail-closed: solo un Administrador con sesión puede gestionar las claves.
         private static void ValidarEsAdministrador()
         {
-            if (!SessionManager.IsLoggedIn)
-                throw new BE.AppException("err.bll.sesion_expirada",
-                    "La sesión expiró. Volvé a iniciar sesión.");
-            string perfil = SessionManager.GetInstance().Usuario.Perfil ?? "";
-            if (!perfil.Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase))
-                throw new BE.AppException("err.bll.usuario.sin_permiso",
-                    "Solo un Administrador puede gestionar las claves de emergencia.");
+            BLLHelper.ExigirAdministrador("err.bll.usuario.sin_permiso",
+                "Solo un Administrador puede gestionar las claves de emergencia.");
         }
     }
 }

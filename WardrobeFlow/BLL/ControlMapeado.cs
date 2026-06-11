@@ -33,15 +33,7 @@ namespace BLL
         // Igual criterio que BLL.Familia: Administrador (bypass) o un rol con la patente de Gestión de Usuarios.
         private static void VerificarPuedeGestionar()
         {
-            if (!Seguridad.SessionManager.IsLoggedIn)
-                throw new BE.AppException("err.bll.sesion_expirada", "La sesión expiró. Volvé a iniciar sesión.");
-            var u = Seguridad.SessionManager.GetInstance().Usuario;
-            string perfil = u.Perfil ?? "";
-            if (perfil.Equals(BE.Roles.Administrador, StringComparison.OrdinalIgnoreCase)) return;
-            bool tieneGestion = u.Permisos != null && u.Permisos.Exists(p => p.NombreMenu == "mnuUsuarios");
-            if (!tieneGestion)
-                throw new BE.AppException("err.bll.familia.sin_permiso",
-                    "No tenés permiso para gestionar usuarios y permisos.");
+            BLLHelper.ExigirGestionUsuarios();
         }
     }
 }

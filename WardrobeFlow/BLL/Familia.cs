@@ -20,8 +20,6 @@ namespace BLL
         private Servicios.Bitacora _bitacoraLazy;
         private Servicios.Bitacora _bitacora => _bitacoraLazy ?? (_bitacoraLazy = new Servicios.Bitacora());
 
-        private const string RolAdministrador = BE.Roles.Administrador;
-
         // Inyección de dependencias: el constructor por defecto usa el DAL real;
         // el segundo permite inyectar un doble de prueba (tests unitarios sin BD).
         public Familia() : this(new DAL.Permiso()) { }
@@ -37,8 +35,7 @@ namespace BLL
         private static bool EsAdminEnSesion()
         {
             return Seguridad.SessionManager.IsLoggedIn &&
-                   (Seguridad.SessionManager.GetInstance().Usuario.Perfil ?? "")
-                       .Equals(RolAdministrador, StringComparison.OrdinalIgnoreCase);
+                   Seguridad.SessionManager.GetInstance().Usuario.EsAdministrador;
         }
 
         // Re-validación en el BACKEND. Tras la Etapa 4, administrar permisos no es exclusivo del
@@ -46,16 +43,8 @@ namespace BLL
         // (el Administrador sigue con acceso total por bypass).
         private static void VerificarPuedeGestionar()
         {
-            // Fail-closed: sin sesión NO se permite la operación.
-            if (!Seguridad.SessionManager.IsLoggedIn)
-                throw new BE.AppException("err.bll.sesion_expirada",
-                    "La sesión expiró. Volvé a iniciar sesión.");
-            if (EsAdminEnSesion()) return;
-            var u = Seguridad.SessionManager.GetInstance().Usuario;
-            bool tieneGestion = u.Permisos != null && u.Permisos.Exists(p => p.NombreMenu == MenuGestion);
-            if (!tieneGestion)
-                throw new BE.AppException("err.bll.familia.sin_permiso",
-                    "No tenés permiso para gestionar usuarios y permisos.");
+            // Guard centralizado (DRY): Administrador (bypass) o rol con la patente mnuUsuarios.
+            BLLHelper.ExigirGestionUsuarios();
         }
 
         // Anti-autobloqueo: simula los permisos efectivos que daría un conjunto de ids (resolviendo
@@ -321,7 +310,14 @@ namespace BLL
                     if (string.Equals(u.Perfil, rol, StringComparison.OrdinalIgnoreCase))
                         bllVer.GrabarVersion(u.Id, actor, detalle);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // El fallo de los snapshots no debe abortar el cambio de permisos,
+                // pero sí debe quedar registrado para diagnóstico posterior.
+                _bitacora.Registrar("Gestión de Perfiles",
+                    $"Error al grabar snapshots de usuarios con rol '{rol}': {ex.Message}",
+                    BE.Criticidad.Alta);
+            }
         }
 
         // ── Helpers privados de recorrido recursivo ─────────────────────────────

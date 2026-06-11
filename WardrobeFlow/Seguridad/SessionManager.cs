@@ -15,11 +15,12 @@ namespace Seguridad
         // Marca de tiempo del momento en que se inició la sesión.
         public DateTime FechaInicio { get; set; }
 
-        // Retorna la sesión activa. Lanza excepción si no hay sesión iniciada.
+        // Retorna la sesión activa. Lanza SesionException (traducible) si no hay sesión iniciada.
         public static SessionManager GetInstance()
         {
             if (_session == null)
-                throw new Exception("Sesión no iniciada. Debe hacer Login primero.");
+                throw new BE.SesionException("err.seg.sesion_no_iniciada",
+                    "La sesión no está iniciada. Iniciá sesión primero.");
 
             return _session;
         }
@@ -30,13 +31,14 @@ namespace Seguridad
         // T04 — Re-validación de permisos en el BACKEND.
         // Devuelve true si el usuario en sesión posee la patente indicada.
         // El Administrador tiene acceso total. Si no hay usuario, no tiene permiso.
+        // Captura _session en variable local para evitar race condition con Logout().
         public bool TienePermiso(string nombreMenu)
         {
-            if (Usuario == null) return false;
-            if (string.Equals(Usuario.Perfil, BE.Roles.Administrador, StringComparison.OrdinalIgnoreCase))
-                return true;
-            return Usuario.Permisos != null &&
-                   Usuario.Permisos.Exists(p => p.NombreMenu == nombreMenu);
+            var s = _session;
+            if (s?.Usuario == null) return false;
+            if (s.Usuario.EsAdministrador) return true;
+            return s.Usuario.Permisos != null &&
+                   s.Usuario.Permisos.Exists(p => p.NombreMenu == nombreMenu);
         }
 
         // Crea la sesión para el usuario autenticado.
@@ -52,25 +54,16 @@ namespace Seguridad
                 }
                 else
                 {
-                    throw new Exception("Sesión ya iniciada.");
+                    throw new BE.SesionException("err.seg.sesion_ya_iniciada",
+                        "Ya hay una sesión iniciada. Cerrá la sesión actual antes de iniciar otra.");
                 }
             }
         }
 
-        // Destruye la sesión activa.
+        // Destruye la sesión activa. Idempotente: si ya no hay sesión, no hace nada.
         public static void Logout()
         {
-            lock (_lock)
-            {
-                if (_session != null)
-                {
-                    _session = null;
-                }
-                else
-                {
-                    throw new Exception("No hay sesión activa para cerrar.");
-                }
-            }
+            lock (_lock) { _session = null; }
         }
 
         private SessionManager() { }

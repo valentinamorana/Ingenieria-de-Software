@@ -27,6 +27,17 @@ namespace BE
 
         public string Rol { get; set; }
 
+        // ── Datos administrativos NO sensibles (ABM + Historial de Cambios) ──────
+        // Editables desde el panel de Administración de Usuarios y versionados por el
+        // Memento. NO entran al DVH (metadata administrativa, no de integridad crítica).
+        public string Nombre { get; set; }
+
+        public string Apellido { get; set; }
+
+        public DateTime? FechaNacimiento { get; set; }
+
+        public string Email { get; set; }
+
         // Identifica al Administrador del sistema en UN SOLO lugar (flag), en vez de repetir la
         // comparación de strings dispersa por SessionManager, BLL y GUI. Considera tanto Perfil
         // como Rol, es case-insensitive y null-safe. Si el modelo migrara a un Id/columna de BD,
@@ -65,8 +76,12 @@ namespace BE
         // ── Patrón MEMENTO — rol Originator ─────────────────────────────────────
 
         /// <summary>
-        /// Captura el estado restaurable del usuario (clave, estado de bloqueo e
-        /// intentos) en un Memento concreto (BE.VersionUsuario).
+        /// Captura el estado restaurable del usuario en un Memento concreto
+        /// (BE.VersionUsuario). Guarda los datos administrativos NO sensibles
+        /// (username + nombre/apellido/fecha nac./email) que el Historial de Cambios
+        /// versiona y permite deshacer, y conserva el estado de seguridad
+        /// (clave/bloqueo/intentos) solo como trazabilidad interna — la clave NUNCA
+        /// se expone ni se restaura.
         /// </summary>
         public Memento.IMemento CrearMemento(string actor, string detalle)
         {
@@ -77,15 +92,24 @@ namespace BE
                 Actor            = actor,
                 Detalle          = detalle,
                 UsernameSnapshot = this.Username,
-                ClaveSnapshot    = this.Contraseña,
-                EstadoSnapshot   = !this.Bloqueado,   // true = activo
+                NombreSnapshot   = this.Nombre,
+                ApellidoSnapshot = this.Apellido,
+                FechaNacSnapshot = this.FechaNacimiento,
+                EmailSnapshot    = this.Email,
+                // NO se versiona el hash de la contraseña: el control de cambios es solo de datos
+                // administrativos. Se guarda vacío para no dejar huella de credenciales en el historial.
+                ClaveSnapshot    = string.Empty,
+                EstadoSnapshot   = !this.Bloqueado,   // true = activo (metadata operativa, no se restaura)
                 IntentosSnapshot = this.IntentosFallidos
             };
         }
 
         /// <summary>
         /// Restaura el estado del usuario a partir de un Memento previo.
-        /// Solo el Originator conoce qué campos del Memento aplicar.
+        /// SOLO restaura datos administrativos NO sensibles (username, nombre,
+        /// apellido, fecha de nacimiento, email). La contraseña y el estado de
+        /// bloqueo NO se revierten: el control de cambios se enfoca en datos
+        /// administrativos y nunca permite rollback de credenciales.
         /// </summary>
         public void RestaurarDesde(Memento.IMemento memento)
         {
@@ -94,9 +118,11 @@ namespace BE
                 throw new InvalidOperationException(
                     "El memento recibido no corresponde a un Usuario.");
 
-            this.Contraseña       = v.ClaveSnapshot;
-            this.Bloqueado        = !v.EstadoSnapshot;
-            this.IntentosFallidos = v.IntentosSnapshot;
+            this.Username        = v.UsernameSnapshot;
+            this.Nombre          = v.NombreSnapshot;
+            this.Apellido        = v.ApellidoSnapshot;
+            this.FechaNacimiento = v.FechaNacSnapshot;
+            this.Email           = v.EmailSnapshot;
         }
     }
 }

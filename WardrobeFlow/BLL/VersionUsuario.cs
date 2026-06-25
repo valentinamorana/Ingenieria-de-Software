@@ -69,21 +69,52 @@ namespace BLL
                 throw new BE.AppException("err.bll.usuario.no_existe",
                     "El usuario de la versión ya no existe.");
 
-            // 1) Guardar el estado actual como Memento (permite deshacer la restauración).
-            //    Fail-safe: si falla, aborta antes de modificar nada.
-            _caretaker.Guardar(originator.Id,
-                originator.CrearMemento(actor,
-                    $"Snapshot automático antes de restaurar versión ID {idVersion}."));
+            // Detalle del cambio que produce el rollback ("campo: 'actual' → 'restaurado'").
+            string diff    = DescribirRestauracion(originator, memento);
+            string detalle = diff == null
+                ? $"Restauración a versión ID {idVersion}: sin cambios de datos."
+                : $"Restauración a versión ID {idVersion} — {diff}";
 
-            // 2) El Originator restaura su estado desde el Memento elegido.
+            // 1) Aplicar la restauración: el Originator toma el estado de la versión elegida y se
+            //    persiste (UPDATE a la tabla Usuario).
             originator.RestaurarDesde(memento);
-
-            // 3) Persistir el estado restaurado.
             _dalUsuario.RestaurarVersion(memento);
+
+            // 2) Snapshot del NUEVO estado (= valores restaurados), en el MISMO orden que una
+            //    edición (Modificar: primero UPDATE, después snapshot). Así el último snapshot
+            //    SIEMPRE refleja el estado vigente del usuario y el Historial muestra el rollback
+            //    como un cambio más. El estado previo al rollback ya quedó como snapshot anterior,
+            //    de modo que el propio rollback también se puede deshacer.
+            _caretaker.Guardar(memento.IdUsuario, originator.CrearMemento(actor, detalle));
 
             _bitacora.Registrar(modulo,
                 $"Restauración a versión ID {idVersion} — usuario ID {memento.IdUsuario} ({memento.UsernameSnapshot})",
                 BE.Criticidad.Alta);
+        }
+
+        // Describe el cambio que produce un rollback comparando el estado ACTUAL (antes) con el
+        // estado DESTINO de la versión a restaurar (después). Mismo formato "campo: 'a' → 'b'; ..."
+        // que usa una edición normal, así el historial muestra QUÉ cambió el rollback (no solo que
+        // ocurrió). Solo datos administrativos no sensibles. Devuelve null si no cambia nada.
+        private static string DescribirRestauracion(BE.Usuario actual, BE.VersionUsuario destino)
+        {
+            var partes = new System.Collections.Generic.List<string>();
+            void Cmp(string campo, string viejo, string nuevo)
+            {
+                if (!string.Equals(viejo ?? "", nuevo ?? "", System.StringComparison.Ordinal))
+                    partes.Add($"{campo}: '{viejo ?? ""}' → '{nuevo ?? ""}'");
+            }
+            Cmp("Usuario",  actual.Username, destino.UsernameSnapshot);
+            Cmp("Nombre",   actual.Nombre,   destino.NombreSnapshot);
+            Cmp("Apellido", actual.Apellido, destino.ApellidoSnapshot);
+            Cmp("Email",    actual.Email,    destino.EmailSnapshot);
+
+            string fechaVieja = actual.FechaNacimiento?.ToString("yyyy-MM-dd") ?? "";
+            string fechaNueva = destino.FechaNacSnapshot?.ToString("yyyy-MM-dd") ?? "";
+            if (!string.Equals(fechaVieja, fechaNueva, System.StringComparison.Ordinal))
+                partes.Add($"Fecha nac.: '{fechaVieja}' → '{fechaNueva}'");
+
+            return partes.Count == 0 ? null : string.Join("; ", partes);
         }
     }
 }

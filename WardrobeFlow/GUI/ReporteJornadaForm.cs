@@ -2,6 +2,7 @@ using BLL;
 using Servicios.Multiidioma;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
 using System.Drawing.Printing;
 using System.IO;
@@ -21,6 +22,9 @@ namespace GUI
         // Context menus for export buttons
         private ContextMenuStrip _menuExportar;
         private ContextMenuStrip _menuExportarComp;
+
+        // Botón "Tendencia" creado por código (no se toca el Designer).
+        private Button _btnTendencia;
 
         private bool _esComparacion = false;
 
@@ -52,7 +56,31 @@ namespace GUI
             btnExportarComp.Visible = false;
             CrearBannerKPIs();
             ConfigurarMenusExportar();
+            CrearBotonTendencia();
             GenerarReporte();
+        }
+
+        // Crea el botón "Tendencia" por código y lo ubica en el espacio libre de la
+        // primera fila del panel (a la derecha de "Exportar"). No se modifica el Designer.
+        private void CrearBotonTendencia()
+        {
+            var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+            string Tv(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
+
+            _btnTendencia = new Button
+            {
+                Text      = "📈  " + Tv("rpt.tendencia", "Tendencia (rango)"),
+                Location  = new Point(545, 12),
+                Size      = new Size(175, 28),
+                BackColor = Color.FromArgb(150, 70, 105),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 9F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
+            };
+            _btnTendencia.FlatAppearance.BorderSize = 0;
+            _btnTendencia.Click += (s, e) => MostrarTendencia();
+            panelControles.Controls.Add(_btnTendencia);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -87,16 +115,18 @@ namespace GUI
             btnExportar.Text   = "⬇  " + T("rpt.exportartxt", "Exportar TXT") + "...";
             btnExportarComp.Text = "⬇  " + T("rpt.exportartxt", "Exportar TXT") + "...";
             btnLimpiar.Text    = "↩  " + T("rpt.limpiar",     "Limpiar");
+            if (_btnTendencia != null) _btnTendencia.Text = "📈  " + T("rpt.tendencia", "Tendencia (rango)");
 
             if (_kpiPrendasLbl != null) _kpiPrendasLbl.Text = T("rpt.kpi.prendas",  "Prendas disponibles");
             if (_kpiClientesLbl != null) _kpiClientesLbl.Text = T("rpt.kpi.clientes", "Clientes registrados");
             if (_kpiEventosLbl != null) _kpiEventosLbl.Text = T("rpt.kpi.eventos",  "Eventos del día");
             if (_kpiBackupLbl != null) _kpiBackupLbl.Text = T("rpt.kpi.backup",   "días sin backup");
 
-            if (_menuExportar != null && _menuExportar.Items.Count >= 2)
+            if (_menuExportar != null && _menuExportar.Items.Count >= 3)
             {
                 _menuExportar.Items[0].Text = T("rpt.menu.guardartxt",  "Guardar como .TXT");
                 _menuExportar.Items[1].Text = T("rpt.menu.imprimir",    "Imprimir / Exportar PDF");
+                _menuExportar.Items[2].Text = T("rpt.menu.guardarcsv",  "Guardar eventos como .CSV");
             }
             if (_menuExportarComp != null && _menuExportarComp.Items.Count >= 2)
             {
@@ -207,6 +237,8 @@ namespace GUI
                 (s, e) => ExportarContenido(esComparacion: false));
             _menuExportar.Items.Add(Tv("rpt.menu.imprimir", "Imprimir / Exportar PDF"), null,
                 (s, e) => ImprimirReporte());
+            _menuExportar.Items.Add(Tv("rpt.menu.guardarcsv", "Guardar eventos como .CSV"), null,
+                (s, e) => ExportarEventosCsv());
 
             _menuExportarComp = new ContextMenuStrip();
             _menuExportarComp.Items.Add(Tv("rpt.menu.guardarcmp", "Guardar comparación como .TXT"), null,
@@ -224,25 +256,23 @@ namespace GUI
                     ? $"Comparacion_{dtpJornada.Value:yyyyMMdd}_vs_{dtpJornada2.Value:yyyyMMdd}"
                     : $"ReporteJornada_{dtpJornada.Value:yyyyMMdd}";
 
-                string T(string k, string fb) { var t2 = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual); return t2.ContainsKey(k) ? t2[k].Texto : fb; }
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string Tk(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
 
-                using (var dlg = new SaveFileDialog())
+                var reporte = new Exportacion.ReporteExportable
                 {
-                    dlg.Title            = T("rpt.dlg.guardartxt", "Guardar como TXT");
-                    dlg.Filter           = "Archivo de texto (*.txt)|*.txt";
-                    dlg.FileName         = $"{nombreBase}.txt";
-                    dlg.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    Titulo        = $"{Tk("frm.reportejornada", "Reporte de Jornada")} — {dtpJornada.Value:dd/MM/yyyy}",
+                    NombreArchivo = nombreBase,
+                    TextoPlano    = rtbReporte.Text
+                };
 
-                    if (dlg.ShowDialog() != DialogResult.OK) return;
+                // Creator → Factory Method → Product (Exportador concreto a .TXT)
+                Exportacion.GeneradorReporte generador  = new Exportacion.GeneradorJornada();
+                Exportacion.Exportador       exportador = generador.CrearExportador("txt");
+                string ruta = exportador.Exportar(reporte, this);
 
-                    File.WriteAllText(dlg.FileName, rtbReporte.Text, Encoding.UTF8);
-
-                    lblStatus.Text = $"{lbl["rptoegenerado"]}: {Path.GetFileName(dlg.FileName)}";
-                    MessageBox.Show(
-                        string.Format(T("rpt.dlg.exito.msg", "Archivo guardado:\n{0}"), dlg.FileName),
-                        T("rpt.dlg.exito.titulo", "Éxito"),
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                if (ruta != null)
+                    lblStatus.Text = $"{lbl["rptoegenerado"]}: {Path.GetFileName(ruta)}";
             }
             catch (Exception ex)
             {
@@ -254,91 +284,86 @@ namespace GUI
         {
             try
             {
-                string[] lines     = rtbReporte.Lines;
-                int      lineIndex = 0;
-                int      pageNum   = 0;
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string Tk(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
 
-                var vinoOscuro = Color.FromArgb(176, 62, 96);
-                var vinoMedio  = Color.FromArgb(110, 40, 70);
-
-                using (var pd = new PrintDocument())
+                var reporte = new Exportacion.ReporteExportable
                 {
-                    pd.DocumentName = $"ReporteJornada_{dtpJornada.Value:yyyyMMdd}";
-                    pd.DefaultPageSettings.Margins = new System.Drawing.Printing.Margins(40, 40, 40, 40);
+                    Titulo        = $"{Tk("frm.reportejornada", "Reporte de Jornada")} — {dtpJornada.Value:dd/MM/yyyy}",
+                    NombreArchivo = $"ReporteJornada_{dtpJornada.Value:yyyyMMdd}",
+                    TextoPlano    = rtbReporte.Text
+                };
 
-                    pd.BeginPrint += (s2, e2) => { lineIndex = 0; pageNum = 0; };
-
-                    pd.PrintPage += (s, e) =>
-                    {
-                        pageNum++;
-                        var g      = e.Graphics;
-                        var margen = e.MarginBounds;
-                        float y    = margen.Top;
-
-                        var tt = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
-                        string Tv2(string k, string fb) => tt.ContainsKey(k) ? tt[k].Texto : fb;
-
-                        using (var fuenteTitulo  = new Font("Segoe UI", 13f, FontStyle.Bold))
-                        using (var fuenteSub     = new Font("Segoe UI", 8f, FontStyle.Regular))
-                        using (var fuenteCuerpo  = new Font("Consolas", 8.5f))
-                        using (var brMedio       = new SolidBrush(vinoMedio))
-                        using (var brTexto       = new SolidBrush(Color.FromArgb(40, 15, 28)))
-                        using (var penLinea      = new Pen(vinoOscuro, 1.5f))
-                        using (var penPie        = new Pen(vinoOscuro, 1f))
-                        {
-                            if (pageNum == 1)
-                            {
-                                float headerH = fuenteTitulo.GetHeight(g) + 14;
-                                using (var brHeaderBg = new SolidBrush(vinoOscuro))
-                                    g.FillRectangle(brHeaderBg, margen.Left, y, margen.Width, headerH);
-                                g.DrawString(
-                                    $"{Tv2("frm.reportejornada", "Reporte de Jornada")} — {dtpJornada.Value:dd/MM/yyyy}",
-                                    fuenteTitulo, Brushes.White,
-                                    margen.Left + 6, y + 5);
-                                y += headerH + 4;
-
-                                g.DrawString(
-                                    $"{Tv2("rpt.txt.generado", "Generado")}: {DateTime.Now:dd/MM/yyyy HH:mm}",
-                                    fuenteSub, brMedio, margen.Left, y);
-                                y += fuenteSub.GetHeight(g) + 4;
-                                g.DrawLine(penLinea, margen.Left, y, margen.Right, y);
-                                y += 6;
-                            }
-
-                            float lineH = fuenteCuerpo.GetHeight(g);
-                            while (lineIndex < lines.Length)
-                            {
-                                if (y + lineH > margen.Bottom - 20) break;
-                                g.DrawString(lines[lineIndex], fuenteCuerpo, brTexto, margen.Left, y);
-                                lineIndex++;
-                                y += lineH;
-                            }
-
-                            g.DrawLine(penPie, margen.Left, margen.Bottom - 16, margen.Right, margen.Bottom - 16);
-                            g.DrawString(
-                                string.Format(Tv2("bit.pdf.pagina", "WardrobeFlow — Página {0}"), pageNum),
-                                fuenteSub, brMedio, margen.Left, margen.Bottom - 14);
-                        }
-
-                        e.HasMorePages = lineIndex < lines.Length;
-                    };
-
-                    var tPrev = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
-                    string Tv3(string k, string fb) => tPrev.ContainsKey(k) ? tPrev[k].Texto : fb;
-
-                    using (var preview = new PrintPreviewDialog())
-                    {
-                        preview.Document = pd;
-                        preview.Width    = 1050;
-                        preview.Height   = 780;
-                        preview.Text     = $"{Tv3("bit.pdf.vistaprevia", "Vista Previa")} — {Tv3("frm.reportejornada", "Reporte de Jornada")}";
-                        preview.ShowDialog(this);
-                    }
-                }
+                // Creator → Factory Method → Product (Exportador concreto a PDF)
+                Exportacion.GeneradorReporte generador  = new Exportacion.GeneradorJornada();
+                Exportacion.Exportador       exportador = generador.CrearExportador("pdf");
+                exportador.Exportar(reporte, this);
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error al imprimir", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Genera la TENDENCIA de actividad en el rango [Comparar con … Jornada].
+        // La agregación por día vive en BLL.ReporteJornada; la GUI solo la muestra.
+        private void MostrarTendencia()
+        {
+            try
+            {
+                var lbl = ConstruirLblReporte();
+                rtbReporte.Text = _servicio.GenerarTendencia(
+                    dtpJornada2.Value.Date, dtpJornada.Value.Date, lbl);
+                lblStatus.Text  = $"{lbl["rptoegenerado"]} — {DateTime.Now:HH:mm:ss}";
+                _esComparacion  = false;
+                btnExportarComp.Visible = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Exporta los eventos de negocio de la jornada como CSV tabular (Factory Method).
+        // Los datos los provee BLL.ReporteJornada; acá solo se arma el reporte y se exporta.
+        private void ExportarEventosCsv()
+        {
+            try
+            {
+                var t = Traductor.ObtenerTraducciones(GestorIdioma.IdiomaActual);
+                string Tk(string k, string fb) => t.ContainsKey(k) ? t[k].Texto : fb;
+
+                DateTime fecha    = dtpJornada.Value.Date;
+                DataTable eventos = _servicio.ObtenerEventosDelDia(fecha);
+
+                if (eventos == null || eventos.Rows.Count == 0)
+                {
+                    MessageBox.Show(
+                        Tk("err.pdf.sinDatos", "No hay datos para exportar."),
+                        Tk("rpt.menu.guardarcsv", "Guardar eventos como .CSV"),
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                var headers = new string[eventos.Columns.Count];
+                for (int i = 0; i < eventos.Columns.Count; i++)
+                    headers[i] = eventos.Columns[i].ColumnName;
+
+                var reporte = new Exportacion.ReporteExportable
+                {
+                    Titulo        = $"{Tk("frm.reportejornada", "Reporte de Jornada")} — {fecha:dd/MM/yyyy}",
+                    NombreArchivo = $"EventosJornada_{fecha:yyyyMMdd}",
+                    Encabezados   = headers,
+                    Datos         = eventos
+                };
+
+                Exportacion.GeneradorReporte generador  = new Exportacion.GeneradorJornada();
+                Exportacion.Exportador       exportador = generador.CrearExportador("csv");
+                exportador?.Exportar(reporte, this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error al exportar", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -408,6 +433,13 @@ namespace GUI
                 { "rptoegenerado", Tv("rpt.txt.rptoegenerado","Reporte generado")                                      },
                 { "compgenerada",  Tv("rpt.txt.compgenerada", "Comparación generada")                                  },
                 { "impresionenv",  Tv("rpt.txt.impresionenv", "Impresión enviada")                                     },
+                { "tend.titulo",   Tv("rpt.txt.tend.titulo",  "TENDENCIA DE ACTIVIDAD")                                },
+                { "tend.dias",     Tv("rpt.txt.tend.dias",    "Días analizados")                                       },
+                { "tend.total",    Tv("rpt.txt.tend.total",   "Total de eventos")                                      },
+                { "tend.promedio", Tv("rpt.txt.tend.promedio","Promedio diario")                                       },
+                { "tend.diapico",  Tv("rpt.txt.tend.diapico", "Día de mayor actividad")                                },
+                { "tend.diavalle", Tv("rpt.txt.tend.diavalle","Día de menor actividad")                                },
+                { "tend.detalle",  Tv("rpt.txt.tend.detalle", "DETALLE POR DÍA")                                       },
             };
         }
 

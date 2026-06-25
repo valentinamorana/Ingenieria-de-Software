@@ -242,6 +242,17 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="PreferenciasUI.cs" />
+    <Compile Include="Exportacion\ReporteExportable.cs" />
+    <Compile Include="Exportacion\Exportador.cs" />
+    <Compile Include="Exportacion\ExportadorPdf.cs" />
+    <Compile Include="Exportacion\ExportadorTxt.cs" />
+    <Compile Include="Exportacion\GeneradorReporte.cs" />
+    <Compile Include="Exportacion\GeneradorBitacora.cs" />
+    <Compile Include="Exportacion\GeneradorJornada.cs" />
+    <Compile Include="Exportacion\ExportadorCsv.cs" />
+    <Compile Include="AlertasForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <EmbeddedResource Include="Bitacora.resx">
       <DependentUpon>Bitacora.cs</DependentUpon>
     </EmbeddedResource>

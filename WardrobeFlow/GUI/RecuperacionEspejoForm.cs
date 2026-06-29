@@ -14,8 +14,9 @@ namespace GUI
     ///   • Asumir Pérdida        — acepta los datos actuales y recalcula todos los DV.
     ///   • Restaurar Backup      — cuando el espejo no alcanza (vaciado/eliminación física).
     ///
-    /// Se abre desde el Diagnóstico de Integridad (admin logueado) y desde la pantalla de bloqueo
-    /// de arranque (RestauracionForm). Cada acción se confirma con ConfirmarAdminForm.
+    /// Es la ÚNICA vía de recuperación del sistema. Se abre desde el Diagnóstico de Integridad
+    /// (admin logueado) y desde el arranque (Program), cuando un Administrador autenticado entra
+    /// con la base comprometida. Cada acción se confirma con ConfirmarAdminForm.
     /// </summary>
     public class RecuperacionEspejoForm : Form
     {
@@ -226,8 +227,12 @@ namespace GUI
                 ofd.Title  = T("rec.backup.seleccionar", "Seleccionar Backup para Restaurar");
                 if (ofd.ShowDialog() != DialogResult.OK) return;
 
+                // RF-08 — Informar el ALCANCE de la pérdida (fecha del backup + registros actuales
+                // posteriores que se perderían al sobrescribir) antes de confirmar la restauración.
+                string alcance = ConstruirAlcancePerdida(ofd.FileName);
+
                 if (MessageBox.Show(
-                        T("conf.rest.sobreescribir", "¿Está seguro? Esta operación sobrescribirá todos los datos actuales y reiniciará la aplicación."),
+                        T("conf.rest.sobreescribir", "¿Está seguro? Esta operación sobrescribirá todos los datos actuales y reiniciará la aplicación.") + alcance,
                         T("msg.backup.titulorestaura", "Confirmar Restauración"),
                         MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
 
@@ -254,6 +259,42 @@ namespace GUI
                 }
                 catch (Exception ex) { MostrarError(ex); }
             }
+        }
+
+        // RF-08 — Arma el aviso de alcance de la pérdida: fecha del backup + desglose de los
+        // registros de la base actual posteriores a esa fecha (los que se perderían). Tolerante a
+        // fallos: si no puede leerse la fecha o contar, devuelve el aviso genérico o vacío.
+        private string ConstruirAlcancePerdida(string ruta)
+        {
+            try
+            {
+                var bll = new BLL.Backup();
+                DateTime? fecha = bll.ObtenerFechaBackup(ruta);
+                if (!fecha.HasValue)
+                    return T("msg.backup.alcance.desconocido",
+                        "\n\nNo se pudo determinar la fecha del backup. Se perderán todos los cambios posteriores a su creación.");
+
+                var sb = new System.Text.StringBuilder();
+                sb.Append(string.Format(
+                    T("msg.backup.alcance",
+                      "\n\nEl backup es del {0} (hace {1} día(s)).\nSe PERDERÁN todos los cambios posteriores a esa fecha."),
+                    fecha.Value.ToString("dd/MM/yyyy HH:mm"),
+                    Math.Max(0, (int)(DateTime.Now - fecha.Value).TotalDays)));
+
+                var cambios = bll.ObtenerCambiosDesde(fecha);
+                if (cambios == null || cambios.Count == 0)
+                    sb.Append(T("msg.backup.sinperdida",
+                        "\n\nNo hay registros nuevos posteriores a esa fecha: no se perdería información reciente."));
+                else
+                {
+                    sb.Append(T("msg.backup.perdida.titulo",
+                        "\n\nSe perderán estos registros creados después del backup:"));
+                    foreach (var c in cambios)
+                        sb.Append($"\n  • {c.Entidad}: {c.Cantidad}");
+                }
+                return sb.ToString();
+            }
+            catch { return string.Empty; }
         }
 
         private void MostrarError(Exception ex)

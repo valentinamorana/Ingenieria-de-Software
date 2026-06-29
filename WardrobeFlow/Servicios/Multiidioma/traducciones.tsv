@@ -740,7 +740,6 @@ ES	btn.ver.restaurar	Restaurar Versión Seleccionada
 ES	col.ver.id	ID
 ES	col.ver.fecha	Fecha
 ES	col.ver.actor	Modificado por
-ES	col.ver.detalle	Detalle
 ES	col.ver.estado	Estado
 ES	mnu.historialusr	Historial de Cambios
 ES	frm.confirmaradmin	Confirmar Administrador
@@ -1633,7 +1632,6 @@ EN	btn.ver.restaurar	Restore Selected Version
 EN	col.ver.id	ID
 EN	col.ver.fecha	Date
 EN	col.ver.actor	Modified by
-EN	col.ver.detalle	Detail
 EN	col.ver.estado	Status
 EN	mnu.historialusr	Change History
 EN	frm.confirmaradmin	Confirm Administrator
@@ -2526,7 +2524,6 @@ RU	btn.ver.restaurar	Восстановить выбранную версию
 RU	col.ver.id	ID
 RU	col.ver.fecha	Дата
 RU	col.ver.actor	Изменено кем
-RU	col.ver.detalle	Детали
 RU	col.ver.estado	Состояние
 RU	mnu.historialusr	История изменений
 RU	frm.confirmaradmin	Подтверждение Администратора
@@ -3461,7 +3458,6 @@ PT	btn.ver.restaurar	Restaurar Versão Selecionada
 PT	col.ver.id	ID
 PT	col.ver.fecha	Data
 PT	col.ver.actor	Modificado por
-PT	col.ver.detalle	Detalhe
 PT	col.ver.estado	Estado
 PT	frm.confirmaradmin	Confirmar Administrador
 PT	lbl.confirmaradmin.subtitulo	Somente um Administrador pode continuar
@@ -3598,6 +3594,7 @@ ES	err.adminusr.rol_vacio	Seleccioná un rol.
 ES	col.ver.campo	Campo
 ES	col.ver.anterior	Valor anterior
 ES	col.ver.nuevo	Valor nuevo
+ES	col.ver.detalle	Cambios realizados
 ES	col.ver.f.usuario	Usuario
 ES	col.ver.f.nombre	Nombre
 ES	col.ver.f.apellido	Apellido
@@ -3631,6 +3628,7 @@ EN	err.adminusr.rol_vacio	Select a role.
 EN	col.ver.campo	Field
 EN	col.ver.anterior	Previous value
 EN	col.ver.nuevo	New value
+EN	col.ver.detalle	Changes made
 EN	col.ver.f.usuario	Username
 EN	col.ver.f.nombre	Name
 EN	col.ver.f.apellido	Surname
@@ -3663,6 +3661,7 @@ PT	err.adminusr.rol_vacio	Selecione um papel.
 PT	col.ver.campo	Campo
 PT	col.ver.anterior	Valor anterior
 PT	col.ver.nuevo	Novo valor
+PT	col.ver.detalle	Alterações realizadas
 PT	col.ver.f.usuario	Usuário
 PT	col.ver.f.nombre	Nome
 PT	col.ver.f.apellido	Sobrenome
@@ -3696,6 +3695,7 @@ RU	err.adminusr.rol_vacio	Выберите роль.
 RU	col.ver.campo	Поле
 RU	col.ver.anterior	Прежнее значение
 RU	col.ver.nuevo	Новое значение
+RU	col.ver.detalle	Внесённые изменения
 RU	col.ver.f.usuario	Имя пользователя
 RU	col.ver.f.nombre	Имя
 RU	col.ver.f.apellido	Фамилия
@@ -4061,6 +4061,26 @@ EN	hist.rollback	rollback
 RU	hist.rollback	откат
 PT	hist.rollback	reversão
 ES	msg.historial.confirmar.revertir	¿Revertir al estado anterior a este cambio?\n\n«{0}»:  «{2}»  →  «{1}»\n\nEl usuario volverá a los valores previos a esta modificación. Es reversible (queda registrado como un nuevo cambio).
+ES	msg.historial.confirmar.restaurar	¿Restaurar al usuario al estado del {0}?\n\n{1}\n\nEl usuario quedará exactamente en este estado. Es reversible (queda registrado como un nuevo cambio en el historial).
 EN	msg.historial.confirmar.revertir	Revert to the state before this change?\n\n«{0}»:  «{2}»  →  «{1}»\n\nThe user will return to the values prior to this modification. It is reversible (logged as a new change).
+EN	msg.historial.confirmar.restaurar	Restore the user to the state of {0}?\n\n{1}\n\nThe user will be left exactly in this state. It is reversible (logged as a new change in the history).
 RU	msg.historial.confirmar.revertir	Вернуть состояние до этого изменения?\n\n«{0}»:  «{2}»  →  «{1}»\n\nПользователь вернётся к значениям до этого изменения. Действие обратимо (записывается как новое изменение).
+RU	msg.historial.confirmar.restaurar	Восстановить состояние пользователя на {0}?\n\n{1}\n\nПользователь будет приведён точно к этому состоянию. Действие обратимо (записывается как новое изменение в истории).
 PT	msg.historial.confirmar.revertir	Reverter ao estado anterior a esta alteração?\n\n«{0}»:  «{2}»  →  «{1}»\n\nO usuário voltará aos valores anteriores a esta modificação. É reversível (registrado como uma nova alteração).
+PT	msg.historial.confirmar.restaurar	Restaurar o usuário ao estado de {0}?\n\n{1}\n\nO usuário ficará exatamente neste estado. É reversível (registrado como uma nova alteração no histórico).
+ES	perm.tag.directo	directo
+EN	perm.tag.directo	direct
+RU	perm.tag.directo	прямой
+PT	perm.tag.directo	direto
+ES	perm.tag.heredado	heredado
+EN	perm.tag.heredado	inherited
+RU	perm.tag.heredado	унаследовано
+PT	perm.tag.heredado	herdado
+ES	err.bll.familia.sistema_sin_gestion	Esta acción dejaría al sistema SIN NINGÚN usuario con acceso de Gestión de Usuarios. Asigná la gestión a otro rol o usuario antes de continuar.
+EN	err.bll.familia.sistema_sin_gestion	This action would leave the system with NO user able to access User Management. Assign management to another role or user before continuing.
+RU	err.bll.familia.sistema_sin_gestion	Это действие оставит систему БЕЗ единого пользователя с доступом к управлению пользователями. Назначьте управление другой роли или пользователю, прежде чем продолжить.
+PT	err.bll.familia.sistema_sin_gestion	Esta ação deixaria o sistema SEM NENHUM usuário com acesso à Gestão de Usuários. Atribua a gestão a outro perfil ou usuário antes de continuar.
+ES	err.bll.familia.autobloqueo	No podés quitarte a vos mismo el acceso de Gestión de Usuarios de tu propio rol.
+EN	err.bll.familia.autobloqueo	You cannot remove your own User Management access from your own role.
+RU	err.bll.familia.autobloqueo	Вы не можете убрать у себя доступ к управлению пользователями из своей собственной роли.
+PT	err.bll.familia.autobloqueo	Você não pode remover o seu próprio acesso à Gestão de Usuários do seu próprio perfil.

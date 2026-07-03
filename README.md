@@ -1,5 +1,9 @@
 # WardrobeFlow – Trabajo Práctico Integrador
 
+![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.7.2-512BD4) ![C#](https://img.shields.io/badge/C%23-WinForms-239120) ![SQL Server](https://img.shields.io/badge/SQL%20Server-ADO.NET-CC2927)
+
+Sistema de escritorio (WinForms MDI) para la gestión de suscripciones de indumentaria, desarrollado para la materia **Ingeniería de Software – UAI 2026** por **Bolívar · Morana**.
+
 ## Descripción del Sistema
 
 **WardrobeFlow** es un sistema de gestión diseñado para la administración de prendas bajo un modelo de suscripción.
@@ -123,10 +127,13 @@ Los scripts SQL están consolidados en **`WardrobeFlow/BD/`** (idempotentes):
                                  idiomas) y árbol Composite.
 02_Actualizar_BaseDeDatos.sql -- Aplica las migraciones sobre una BD existente
                                  (columnas/tablas nuevas + migración Composite).
+03_Permisos_Granulares.sql     -- Permisos granulares y mapeo de controles.
+04_Diagnostico_Limpieza_Nodos_Permiso.sql -- Diagnóstico y limpieza de nodos de permiso.
+05_Renovacion_Suscripcion.sql  -- Renovación de suscripciones.
 ```
 
 - **Instalación nueva** → ejecutar `01_Crear_BaseDeDatos.sql`.
-- **Actualizar una BD existente** → ejecutar `02_Actualizar_BaseDeDatos.sql`.
+- **Actualizar una BD existente** → ejecutar `02_Actualizar_BaseDeDatos.sql` y luego los scripts `03` a `05` en orden numérico.
 
 Los dígitos verificadores se inicializan solos en el primer arranque; también pueden recalcularse desde **Administrar → Usuarios → Recalcular DV**.
 
@@ -157,6 +164,30 @@ Configurar en `GUI/App.config` el servidor SQL:
        providerName="System.Data.SqlClient" />
 </connectionStrings>
 ```
+
+---
+
+## Compilación y Tests
+
+- Proyecto **.NET Framework 4.7.2** (csproj clásico): compilar con **MSBuild de Visual Studio**, no con `dotnet build`.
+- `WardrobeFlow/build-and-test.ps1` compila la solución y ejecuta la suite de tests unitarios (`WardrobeFlow/Tests`).
+
+```powershell
+.\WardrobeFlow\build-and-test.ps1                 # compila (Debug) y corre los tests
+.\WardrobeFlow\build-and-test.ps1 -Configuration Release
+.\WardrobeFlow\build-and-test.ps1 -SkipTests      # solo compila
+```
+
+---
+
+## Estructura del Repositorio
+
+| Carpeta | Contenido |
+|---------|-----------|
+| `WardrobeFlow/` | Solución de Visual Studio (`IngSoftware-Bolivar,Morana.slnx`): proyectos `GUI`, `BLL`, `DAL`, `BE`, `Servicios`, `Seguridad` y `Tests` |
+| `WardrobeFlow/BD/` | Scripts SQL (creación, actualización y migraciones) y documentación de roles |
+| `Entregas/` | Entregas parciales de la materia (Primera, Segunda y Tercera Entrega) |
+| `Recursos Gráficos/` | Maquetas de pantallas, paleta de colores e íconos |
 
 ---
 
